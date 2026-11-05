@@ -1,0 +1,72 @@
+services:
+  # ── MySQL 8.4 Database ─────────────────────────────────────────
+  mysql:
+    image: mysql:8.4
+    container_name: marinesure_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: marinesure
+      MYSQL_USER: marinesure_app
+      MYSQL_PASSWORD: change_me
+      MYSQL_ROOT_PASSWORD: change_me_root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "marinesure_app", "-pchange_me"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis Cache & Task Queue ───────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: marinesure_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ── FastAPI Backend ────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: marinesure_backend
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+    ports:
+      - "8000:8000"
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=marinesure
+      - MYSQL_USER=marinesure_app
+      - MYSQL_PASSWORD=change_me
+      - JWT_SECRET_KEY=dev_secret_key_marinesure_2_0_change_in_production
+      - REDIS_URL=redis://redis:6379/0
+      - APP_ENV=development
+      - DEBUG=true
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ── React Frontend ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: marinesure_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  redis_data:
