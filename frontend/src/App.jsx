@@ -5,7 +5,9 @@ import ProtectedRoute from './routes/ProtectedRoute'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import CustomerDashboard from './pages/customer/CustomerDashboard'
+import { ShipmentList, RegisterShipment } from './pages/customer/Shipments'
 import ShippingDashboard from './pages/shipping/ShippingDashboard'
+import Tracking from './pages/shipping/Tracking'
 import SurveyorDashboard from './pages/surveyor/SurveyorDashboard'
 import AgentDashboard from './pages/agent/AgentDashboard'
 import OfficerDashboard from './pages/officer/OfficerDashboard'
@@ -165,7 +167,7 @@ export default function App() {
 
           {/* Protected Role Dashboards */}
           <Route
-            path="/customer/*"
+            path="/customer"
             element={
               <ProtectedRoute allowedRoles={['customer']}>
                 <CustomerDashboard />
@@ -173,10 +175,42 @@ export default function App() {
             }
           />
           <Route
-            path="/shipping/*"
+            path="/customer/shipments"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <ShipmentList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/shipments/new"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <RegisterShipment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shipping"
             element={
               <ProtectedRoute allowedRoles={['shipping_company']}>
                 <ShippingDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shipping/shipments"
+            element={
+              <ProtectedRoute allowedRoles={['shipping_company']}>
+                <Tracking />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shipping/tracking"
+            element={
+              <ProtectedRoute allowedRoles={['shipping_company']}>
+                <Tracking />
               </ProtectedRoute>
             }
           />
