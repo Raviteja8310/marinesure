@@ -6,11 +6,14 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import CustomerDashboard from './pages/customer/CustomerDashboard'
 import { ShipmentList, RegisterShipment } from './pages/customer/Shipments'
+import InsuranceProducts from './pages/customer/InsuranceProducts'
+import { ApplicationsList, NewApplication } from './pages/customer/Applications'
 import ShippingDashboard from './pages/shipping/ShippingDashboard'
 import Tracking from './pages/shipping/Tracking'
 import SurveyorDashboard from './pages/surveyor/SurveyorDashboard'
 import AgentDashboard from './pages/agent/AgentDashboard'
 import OfficerDashboard from './pages/officer/OfficerDashboard'
+import OfficerApplications from './pages/officer/OfficerApplications'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import api from './services/api'
 
@@ -187,6 +190,46 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['customer']}>
                 <RegisterShipment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/products"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <InsuranceProducts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/applications"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <ApplicationsList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/applications/new"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <NewApplication />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/applications"
+            element={
+              <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
+                <OfficerApplications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/underwriting"
+            element={
+              <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
+                <OfficerApplications />
               </ProtectedRoute>
             }
           />

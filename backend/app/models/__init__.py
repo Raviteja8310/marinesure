@@ -1,5 +1,14 @@
 """SQLAlchemy models. Importing this package registers tables on Base.metadata."""
 
+from app.models.insurance import (  # noqa: F401
+    InsuranceApplication,
+    InsuranceProduct,
+    PremiumRule,
+    ProductCoverage,
+    ProductExclusion,
+    Quotation,
+    UnderwritingReview,
+)
 from app.models.shipment import (  # noqa: F401
     CargoItem,
     Shipment,
@@ -23,6 +32,13 @@ from app.models.user import (  # noqa: F401
 )
 
 __all__ = [
+    "InsuranceProduct",
+    "ProductCoverage",
+    "ProductExclusion",
+    "PremiumRule",
+    "Quotation",
+    "InsuranceApplication",
+    "UnderwritingReview",
     "Shipment",
     "CargoItem",
     "ShipmentContainer",
