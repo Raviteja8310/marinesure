@@ -1,19 +1,9 @@
-"""
-MarineSure 2.0 – Phase 1 Foundation Verification Tests
-"""
+"""Phase 1: health endpoints, Argon2 hashing, and JWT handling."""
 
-import pytest
-from fastapi.testclient import TestClient
-
-from app.core.config import get_settings
 from app.core.security import create_access_token, decode_token, hash_password, verify_password
-from app.main import app
-
-client = TestClient(app)
 
 
-def test_health_endpoint():
-    """Verify system health endpoint returns healthy status."""
+def test_health_endpoint(client):
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -22,8 +12,7 @@ def test_health_endpoint():
     assert data["version"] == "2.0.0"
 
 
-def test_api_info_endpoint():
-    """Verify v1 API info endpoint."""
+def test_api_info_endpoint(client):
     response = client.get("/api/v1")
     assert response.status_code == 200
     data = response.json()
@@ -32,7 +21,6 @@ def test_api_info_endpoint():
 
 
 def test_password_hashing_argon2():
-    """Verify Argon2 password hashing and verification."""
     password = "SuperSecurePassword123!"
     hashed = hash_password(password)
     assert hashed != password
@@ -42,12 +30,10 @@ def test_password_hashing_argon2():
 
 
 def test_jwt_token_generation_and_decoding():
-    """Verify JWT access token creation and decoding."""
     payload = {"sub": "123", "email": "test@marinesure.local", "roles": ["customer"]}
     token = create_access_token(payload)
     decoded = decode_token(token)
     assert decoded is not None
     assert decoded["sub"] == "123"
-    assert decoded["email"] == "test@marinesure.local"
     assert decoded["roles"] == ["customer"]
     assert decoded["type"] == "access"

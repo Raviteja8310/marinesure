@@ -24,9 +24,13 @@ class Settings(BaseSettings):
     MYSQL_DATABASE: str = "marinesure"
     MYSQL_USER: str = "marinesure_app"
     MYSQL_PASSWORD: str = "change_me"
+    # Overrides the MySQL URL outright. Tests set this to a SQLite URL.
+    DATABASE_URL_OVERRIDE: str | None = None
 
     @property
     def DATABASE_URL(self) -> str:
+        if self.DATABASE_URL_OVERRIDE:
+            return self.DATABASE_URL_OVERRIDE
         return (
             f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
@@ -64,7 +68,11 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 @lru_cache

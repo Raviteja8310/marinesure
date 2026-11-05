@@ -43,3 +43,5 @@ storage/*
 
 # Database
 *.sql.bak
+*.db
+backend/*.db
