@@ -1,5 +1,10 @@
 """SQLAlchemy models. Importing this package registers tables on Base.metadata."""
 
+from app.models.claim_incident import (  # noqa: F401
+    Claim,
+    Incident,
+    SurveyReport,
+)
 from app.models.payment_policy import (  # noqa: F401
     PaymentOrder,
     PaymentTransaction,

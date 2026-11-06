@@ -9,12 +9,14 @@ import { ShipmentList, RegisterShipment } from './pages/customer/Shipments'
 import InsuranceProducts from './pages/customer/InsuranceProducts'
 import { ApplicationsList, NewApplication } from './pages/customer/Applications'
 import PoliciesList from './pages/customer/Policies'
+import CustomerClaims from './pages/customer/Claims'
 import ShippingDashboard from './pages/shipping/ShippingDashboard'
 import Tracking from './pages/shipping/Tracking'
 import SurveyorDashboard from './pages/surveyor/SurveyorDashboard'
 import AgentDashboard from './pages/agent/AgentDashboard'
 import OfficerDashboard from './pages/officer/OfficerDashboard'
 import OfficerApplications from './pages/officer/OfficerApplications'
+import OfficerClaims from './pages/officer/OfficerClaims'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import api from './services/api'
 
@@ -235,6 +237,14 @@ export default function App() {
             }
           />
           <Route
+            path="/customer/claims"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerClaims />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/officer/applications"
             element={
               <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
@@ -247,6 +257,30 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
                 <OfficerApplications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/claims"
+            element={
+              <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
+                <OfficerClaims />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/settlements"
+            element={
+              <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
+                <OfficerClaims />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/officer/surveyors"
+            element={
+              <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
+                <OfficerClaims />
               </ProtectedRoute>
             }
           />
