@@ -1,5 +1,10 @@
 """SQLAlchemy models. Importing this package registers tables on Base.metadata."""
 
+from app.models.agent_audit import (  # noqa: F401
+    AgentCommission,
+    AuditLog,
+    Notification,
+)
 from app.models.claim_incident import (  # noqa: F401
     Claim,
     Incident,

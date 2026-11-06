@@ -18,6 +18,7 @@ import OfficerDashboard from './pages/officer/OfficerDashboard'
 import OfficerApplications from './pages/officer/OfficerApplications'
 import OfficerClaims from './pages/officer/OfficerClaims'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminAudit from './pages/admin/AdminAudit'
 import api from './services/api'
 
 function LandingPage() {
@@ -329,6 +330,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}>
                 <OfficerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminAudit />
               </ProtectedRoute>
             }
           />
