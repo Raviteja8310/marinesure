@@ -2,6 +2,15 @@ import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
+const DEMO_ROLES = [
+  { label: 'Customer', icon: '🚢', email: 'customer@marinesure.com' },
+  { label: 'Carrier', icon: '⚓', email: 'carrier@marinesure.com' },
+  { label: 'Surveyor', icon: '🔍', email: 'surveyor@marinesure.com' },
+  { label: 'Broker Agent', icon: '🤝', email: 'agent@marinesure.com' },
+  { label: 'Underwriter', icon: '🛡️', email: 'officer@marinesure.com' },
+  { label: 'Admin', icon: '⚙️', email: 'admin@marinesure.com' },
+]
+
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -10,12 +19,13 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleLoginWith = async (targetEmail, targetPassword = 'MarineSure@2026') => {
     setError('')
     setLoading(true)
+    setEmail(targetEmail)
+    setPassword(targetPassword)
     try {
-      const user = await login(email, password)
+      const user = await login(targetEmail, targetPassword)
       const roles = user.roles || []
       if (roles.includes('admin')) navigate('/admin')
       else if (roles.includes('insurance_officer') || roles.includes('senior_officer')) navigate('/officer')
@@ -30,9 +40,14 @@ export default function Login() {
     }
   }
 
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    handleLoginWith(email, password)
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-marine-950 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-slate-900/90 border border-marine-800/80 p-8 rounded-2xl shadow-2xl backdrop-blur-xl">
+      <div className="max-w-md w-full space-y-6 bg-slate-900/90 border border-marine-800/80 p-8 rounded-2xl shadow-2xl backdrop-blur-xl">
         <div>
           <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-br from-marine-400 to-marine-600 flex items-center justify-center text-2xl shadow-lg shadow-marine-500/20">
             ⚓
@@ -45,14 +60,35 @@ export default function Login() {
           </p>
         </div>
 
+        {/* 1-Click Demo Persona Switcher */}
+        <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2 text-center tracking-wider">
+            ⚡ Quick Demo Access (1-Click Login)
+          </span>
+          <div className="grid grid-cols-3 gap-2">
+            {DEMO_ROLES.map((r) => (
+              <button
+                key={r.label}
+                type="button"
+                onClick={() => handleLoginWith(r.email)}
+                disabled={loading}
+                className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-marine-700/40 border border-slate-800 hover:border-marine-500 text-xs text-slate-300 hover:text-white transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-50"
+              >
+                <span className="text-sm">{r.icon}</span>
+                <span className="font-semibold text-[11px] truncate w-full text-center">{r.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm space-y-3">
             <div>
               <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
                 Email Address
@@ -62,7 +98,7 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2.5 border border-slate-700 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 sm:text-sm"
                 placeholder="you@domain.com"
               />
             </div>
@@ -75,7 +111,7 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2.5 border border-slate-700 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 sm:text-sm"
                 placeholder="••••••••"
               />
             </div>
@@ -85,18 +121,18 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-marine-600 hover:bg-marine-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-marine-500 transition shadow-lg shadow-marine-600/30 disabled:opacity-50"
+              className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-marine-600 hover:bg-marine-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-marine-500 transition shadow-lg shadow-marine-600/30 disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Authenticating...' : 'Sign In'}
             </button>
           </div>
 
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-xs pt-1">
             <Link to="/register" className="text-marine-400 hover:text-marine-300 font-medium">
               Create an account &rarr;
             </Link>
             <Link to="/" className="text-slate-400 hover:text-slate-300">
-              &larr; Back to Home
+              &larr; Home
             </Link>
           </div>
         </form>

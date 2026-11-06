@@ -15,6 +15,7 @@ from app.api.v1 import (
     insurance,
     payment_policy,
     shipments,
+    system,
     telemetry_ai,
     users,
 )
@@ -86,6 +87,7 @@ def create_application() -> FastAPI:
     app.include_router(analytics.router, prefix="/api/v1")
     app.include_router(agent_audit.router, prefix="/api/v1")
     app.include_router(telemetry_ai.router, prefix="/api/v1")
+    app.include_router(system.router, prefix="/api/v1")
 
     @app.get("/api/v1", tags=["System"])
     async def api_info():
