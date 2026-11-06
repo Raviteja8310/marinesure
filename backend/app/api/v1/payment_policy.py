@@ -53,7 +53,7 @@ def verify_payment(
     """Verify payment signature and issue insurance policy certificate."""
     user = _user(db, payload)
     return policy_service.verify_payment_and_issue_policy(
-        db, user, order_id, data.gateway_payment_id, data.gateway_signature or "test_sig"
+        db, user, order_id, data.gateway_payment_id, data.gateway_signature
     )
 
 

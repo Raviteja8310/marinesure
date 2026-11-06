@@ -22,6 +22,7 @@ from app.models.payment_policy import (
     PolicyRenewal,
 )
 from app.models.user import User
+from app.services import finance_service
 from app.services.pdf_service import generate_policy_certificate
 
 settings = get_settings()
@@ -84,8 +85,17 @@ def verify_payment_and_issue_policy(
     if order.status == "paid":
         raise HTTPException(status.HTTP_409_CONFLICT, "Payment order is already paid")
 
-    # Verify signature if Razorpay keys are configured and not default
-    if settings.RAZORPAY_KEY_SECRET and settings.RAZORPAY_KEY_SECRET != "change_me":
+    # Signature verification is mandatory unless running in isolated local
+    # development with no gateway secret configured.
+    secret_configured = bool(settings.RAZORPAY_KEY_SECRET) and settings.RAZORPAY_KEY_SECRET != "change_me"
+    if not secret_configured and settings.APP_ENV.lower() != "development":
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Payment gateway is not configured; payments cannot be verified",
+        )
+    if secret_configured:
+        if not gateway_signature:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Payment signature is required")
         msg = f"{order.gateway_order_id}|{gateway_payment_id}"
         expected = hmac.new(
             settings.RAZORPAY_KEY_SECRET.encode("utf-8"),
@@ -110,6 +120,18 @@ def verify_payment_and_issue_policy(
     )
     db.add(tx)
     order.status = "paid"
+    db.flush()
+    finance_service.post_entry(
+        db,
+        entry_type="premium_received",
+        amount=order.amount,
+        currency=order.currency,
+        reference_type="payment_transaction",
+        reference_id=tx.id,
+        external_reference=gateway_payment_id,
+        description=f"Premium received for order {order.order_reference}",
+        actor=user,
+    )
 
     # Issue Policy
     app_record = order.application
@@ -222,6 +244,17 @@ def request_cancellation(db: Session, user: User, policy_id: str, reason: str) -
     )
     policy.status = "cancelled"
     db.add(cancellation)
+    db.flush()
+    if refund > 0:
+        finance_service.post_entry(
+            db,
+            entry_type="premium_refund",
+            amount=refund,
+            reference_type="policy_cancellation",
+            reference_id=cancellation.id,
+            description=f"Premium refund on cancellation of {policy.policy_number}",
+            actor=user,
+        )
     db.commit()
     db.refresh(cancellation)
     return cancellation

@@ -175,12 +175,19 @@ def next_application_number(db: Session) -> str:
     return f"AP-{_now():%Y}-{count:06d}"
 
 
-def list_products(db: Session) -> list[InsuranceProduct]:
-    products = db.query(InsuranceProduct).filter(InsuranceProduct.is_deleted == 0).all()
-    if not products:
+def list_products(db: Session, include_inactive: bool = False) -> list[InsuranceProduct]:
+    if not db.query(InsuranceProduct.id).first():
         seed_insurance_products(db)
-        products = db.query(InsuranceProduct).filter(InsuranceProduct.is_deleted == 0).all()
-    return products
+    q = db.query(InsuranceProduct).filter(InsuranceProduct.is_deleted == 0)
+    if not include_inactive:
+        q = q.filter(InsuranceProduct.status == "active")
+    return q.order_by(InsuranceProduct.product_code).all()
+
+
+def _require_active(product: InsuranceProduct) -> InsuranceProduct:
+    if product.status != "active":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This insurance product is not currently offered")
+    return product
 
 
 def get_product(db: Session, product_id: str) -> InsuranceProduct:
@@ -199,7 +206,7 @@ def create_quotation(db: Session, user: User, shipment_id: str, product_id: str)
     if shipment.customer_id != user.id and not (set(user.role_names) & {"admin", "insurance_officer", "senior_officer"}):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not own this shipment")
 
-    product = get_product(db, product_id)
+    product = _require_active(get_product(db, product_id))
 
     # Cargo category from first item, or general
     cargo_category = shipment.cargo_items[0].category if shipment.cargo_items else "general"
@@ -323,7 +330,7 @@ def submit_application(db: Session, user: User, data) -> InsuranceApplication:
     if shipment.customer_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not own this shipment")
 
-    product = get_product(db, data.product_id)
+    product = _require_active(get_product(db, data.product_id))
 
     cargo_category = shipment.cargo_items[0].category if shipment.cargo_items else "general"
     pricing = calculate_premium(

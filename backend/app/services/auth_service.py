@@ -72,11 +72,17 @@ def _hash_token(token: str) -> str:
 
 def seed_roles(db: Session) -> None:
     """Insert the seven platform roles if they are missing."""
-    existing = {row.role_name for row in db.query(Role.role_name).all()}
+    existing = {role.role_name: role for role in db.query(Role).all()}
     for name, description in ROLE_DESCRIPTIONS.items():
         if name not in existing:
-            db.add(Role(role_name=name, description=description))
+            db.add(Role(role_name=name, description=description, is_system=True))
+        elif not existing[name].is_system:
+            existing[name].is_system = True
     db.commit()
+
+    from app.services.rbac_service import seed_permissions
+
+    seed_permissions(db)
 
 
 def _role(db: Session, name: str) -> Role:
@@ -436,7 +442,12 @@ def assign_role(db: Session, actor: User, target: User, role_name: str, data) ->
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Only an administrator can assign this role"
         )
-    role = _role(db, role_name)
+    if role_name in ROLE_DESCRIPTIONS:
+        role = _role(db, role_name)
+    else:
+        role = db.query(Role).filter(Role.role_name == role_name).one_or_none()
+        if role is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Role '{role_name}' does not exist")
     if role not in target.roles:
         target.roles.append(role)
     if role_name in ("insurance_officer", "senior_officer", "admin"):

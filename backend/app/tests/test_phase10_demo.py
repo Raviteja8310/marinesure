@@ -22,9 +22,42 @@ def test_system_status_and_health(client):
     assert data["modules"]["iot_telemetry"] == "active"
 
 
-def test_seed_demo_environment_and_logins(client):
-    # 1. Execute demo seed
-    seed_res = client.post("/api/v1/system/seed-demo")
+def _admin_headers():
+    from app.core.security import create_access_token
+    from app.core.security import hash_password
+    from app.models.user import Role
+
+    db = SessionLocal()
+    try:
+        admin = User(name="Seed Admin", email="seed.admin@example.com",
+                     password_hash=hash_password("CorrectHorse9"), status="active", email_verified=True)
+        admin.roles.append(db.query(Role).filter(Role.role_name == "admin").one())
+        db.add(admin)
+        db.commit()
+        token = create_access_token({"sub": admin.id, "roles": ["admin"]})
+    finally:
+        db.close()
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_seed_demo_requires_admin_and_development(client, monkeypatch):
+    from app.api.v1 import system
+
+    assert client.post("/api/v1/system/seed-demo").status_code == 401
+    headers = _admin_headers()
+    monkeypatch.setattr(system.settings, "DEBUG", False)
+    assert client.post("/api/v1/system/seed-demo", headers=headers).status_code == 404
+    monkeypatch.setattr(system.settings, "DEBUG", True)
+    monkeypatch.setattr(system.settings, "APP_ENV", "production")
+    assert client.post("/api/v1/system/seed-demo", headers=headers).status_code == 404
+
+
+def test_seed_demo_environment_and_logins(client, monkeypatch):
+    from app.api.v1 import system
+
+    monkeypatch.setattr(system.settings, "DEBUG", True)
+    # 1. Execute demo seed (admin only, development only)
+    seed_res = client.post("/api/v1/system/seed-demo", headers=_admin_headers())
     assert seed_res.status_code == 200, seed_res.text
     seed_data = seed_res.json()
     assert seed_data["status"] == "success"

@@ -21,6 +21,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminAudit from './pages/admin/AdminAudit'
 import api from './services/api'
 import { ApiListPage, ProfilePage, NotificationsPage, AdminUsersPage } from './pages/shared/OperationalPages'
+import { PaymentsPage, SettlementsPage, GrievancesPage, AssistantPage, RolesPermissionsPage, AdminProductsPage, FinancePage, InspectionsPage, SurveyorReportsPage } from './pages/shared/OpsModules'
 
 function LandingPage() {
   const [backendStatus, setBackendStatus] = useState(null)
@@ -227,10 +228,10 @@ export default function App() {
             }
           />
           <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer']}><ProfilePage role="customer" /></ProtectedRoute>} />
-          <Route path="/customer/payments" element={<ProtectedRoute allowedRoles={['customer']}><ApiListPage title="Payment History" role="customer" endpoint={null} description="Payment records and receipts." unavailableMessage="The current backend does not expose a customer payment-history endpoint. Add GET /payments before enabling payment history; this page will not invent payment records." /></ProtectedRoute>} />
-          <Route path="/customer/settlements" element={<ProtectedRoute allowedRoles={['customer']}><ApiListPage title="My Settlements" role="customer" endpoint={null} description="Approved claim settlement statements and payout references." unavailableMessage="The current backend has no customer settlement-history endpoint or settlement transaction table. Implement GET /settlements/me and settlement transaction records." /></ProtectedRoute>} />
-          <Route path="/customer/grievances" element={<ProtectedRoute allowedRoles={['customer']}><ApiListPage title="Grievances" role="customer" endpoint={null} description="Register and track service complaints and claim disputes." unavailableMessage="Grievance management is not implemented in the current backend. Add grievance models and authenticated create/list/update endpoints." /></ProtectedRoute>} />
-          <Route path="/customer/ai" element={<ProtectedRoute allowedRoles={['customer']}><ApiListPage title="MarineSure AI Assistant" role="customer" endpoint={null} description="AI policy guidance and claim assistance." unavailableMessage="The current AI endpoints are limited to document parsing and damage analysis. A permission-aware chat/recommendation API is still required." /></ProtectedRoute>} />
+          <Route path="/customer/payments" element={<ProtectedRoute allowedRoles={['customer']}><PaymentsPage /></ProtectedRoute>} />
+          <Route path="/customer/settlements" element={<ProtectedRoute allowedRoles={['customer']}><SettlementsPage /></ProtectedRoute>} />
+          <Route path="/customer/grievances" element={<ProtectedRoute allowedRoles={['customer']}><GrievancesPage /></ProtectedRoute>} />
+          <Route path="/customer/ai" element={<ProtectedRoute allowedRoles={['customer']}><AssistantPage /></ProtectedRoute>} />
           <Route path="/customer/notifications" element={<ProtectedRoute allowedRoles={['customer']}><NotificationsPage role="customer" /></ProtectedRoute>} />
           <Route
             path="/customer/claims"
@@ -264,7 +265,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/officer/settlements" element={<ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}><ApiListPage title="Settlement Management" role="officer" endpoint={null} description="Review approved amounts, deductions, payout references and reconciliation." unavailableMessage="The backend does not yet expose settlement transactions or payout reconciliation. This page deliberately reports the missing API instead of showing fabricated data." /></ProtectedRoute>} />
+          <Route path="/officer/settlements" element={<ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}><SettlementsPage staff /></ProtectedRoute>} />
+          <Route path="/officer/grievances" element={<ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}><GrievancesPage staff /></ProtectedRoute>} />
+          <Route path="/officer/inspections" element={<ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}><InspectionsPage staff /></ProtectedRoute>} />
           <Route path="/officer/surveyors" element={<ProtectedRoute allowedRoles={['insurance_officer', 'senior_officer']}><ApiListPage title="Surveyor Management" role="officer" endpoint="/surveyors" description="Registered surveyors available for claim assignment." /></ProtectedRoute>} />
           <Route
             path="/shipping"
@@ -296,8 +299,8 @@ export default function App() {
             path="/surveyor/claims"
             element={<ProtectedRoute allowedRoles={['surveyor']}><ApiListPage title="Assigned Claims" role="surveyor" endpoint="/surveyor/assignments" description="Claims assigned to the signed-in surveyor." /></ProtectedRoute>}
           />
-          <Route path="/surveyor/schedule" element={<ProtectedRoute allowedRoles={['surveyor']}><ApiListPage title="Inspection Schedule" role="surveyor" endpoint="/surveyor/assignments" description="Assigned claims requiring inspection. A calendar API is not yet available." /></ProtectedRoute>} />
-          <Route path="/surveyor/reports" element={<ProtectedRoute allowedRoles={['surveyor']}><ApiListPage title="Survey Reports" role="surveyor" endpoint={null} description="Submitted survey reports and inspection history." unavailableMessage="Survey reports can currently be retrieved per claim only. Add GET /surveyor/reports to support a consolidated report history." /></ProtectedRoute>} />
+          <Route path="/surveyor/schedule" element={<ProtectedRoute allowedRoles={['surveyor']}><InspectionsPage /></ProtectedRoute>} />
+          <Route path="/surveyor/reports" element={<ProtectedRoute allowedRoles={['surveyor']}><SurveyorReportsPage /></ProtectedRoute>} />
           <Route path="/agent/commissions" element={<ProtectedRoute allowedRoles={['agent']}><ApiListPage title="Commission Ledger" role="agent" endpoint="/agent/commissions" description="Commission records for the signed-in agent." /></ProtectedRoute>} />
           <Route path="/agent/products" element={<ProtectedRoute allowedRoles={['agent']}><ApiListPage title="Products Catalog" role="agent" endpoint="/insurance-products" description="Insurance products available in the current catalog." /></ProtectedRoute>} />
           <Route
@@ -325,9 +328,9 @@ export default function App() {
             }
           />
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
-          <Route path="/admin/roles" element={<ProtectedRoute allowedRoles={['admin']}><ApiListPage title="Roles & Permissions" role="admin" endpoint={null} description="Review and configure role permissions." unavailableMessage="The backend currently supports role assignment but does not expose a role-permission matrix editor. Implement permission models and admin-only CRUD endpoints." /></ProtectedRoute>} />
-          <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin']}><ApiListPage title="Insurance Product Catalog" role="admin" endpoint="/insurance-products" description="Current catalog from the backend. Product create/update/activate APIs are not yet available, so this view is read-only." /></ProtectedRoute>} />
-          <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={['admin']}><ApiListPage title="Financial Reports" role="admin" endpoint={null} description="Premium, refunds, claim reserves and settlement reporting." unavailableMessage="The backend does not yet expose a financial reporting/ledger endpoint. Add immutable ledger and reconciliation APIs before showing financial totals." /></ProtectedRoute>} />
+          <Route path="/admin/roles" element={<ProtectedRoute allowedRoles={['admin']}><RolesPermissionsPage /></ProtectedRoute>} />
+          <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin']}><AdminProductsPage /></ProtectedRoute>} />
+          <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={['admin']}><FinancePage /></ProtectedRoute>} />
           <Route path="/admin/audit"
             element={
               <ProtectedRoute allowedRoles={['admin']}>

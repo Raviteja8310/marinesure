@@ -227,6 +227,19 @@ class AgentService:
         comm.paid_at = datetime.now(timezone.utc)
         comm.payout_reference = payout_reference or f"PAY-COM-{datetime.now(timezone.utc):%Y%m%d}-{comm.id[:6]}"
 
+        from app.services import finance_service
+
+        if comm.commission_amount and comm.commission_amount > 0:
+            finance_service.post_entry(
+                db,
+                entry_type="commission_payout",
+                amount=comm.commission_amount,
+                reference_type="agent_commission",
+                reference_id=comm.id,
+                external_reference=comm.payout_reference,
+                description=f"Agent commission payout {comm.commission_reference}",
+                actor=officer,
+            )
         db.commit()
         db.refresh(comm)
 

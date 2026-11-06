@@ -121,6 +121,8 @@ def list_audit_logs(
 ):
     """Retrieve administrative compliance audit log trail (Admins & Officers only)."""
     user = _user(db, user_payload)
-    if not (set(user.role_names) & {"admin", "insurance_officer", "senior_officer"}):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only administrators can view audit logs")
-    return AuditService.list_logs(db, limit=limit)
+    from app.services.rbac_service import has_permission
+
+    if not has_permission(db, user, "audit.view"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Missing permission: audit.view")
+    return AuditService.list_logs(db, limit=min(max(limit, 1), 1000))

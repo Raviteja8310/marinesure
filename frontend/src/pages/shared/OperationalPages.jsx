@@ -19,7 +19,8 @@ const roleNav = {
   officer: [
     ['Dashboard', '/officer', '📊'], ['Applications', '/officer/applications', '📝'],
     ['Underwriting', '/officer/underwriting', '🔍'], ['Claims', '/officer/claims', '⚖️'],
-    ['Settlements', '/officer/settlements', '💰'], ['Surveyors', '/officer/surveyors', '🧭'],
+    ['Settlements', '/officer/settlements', '💰'], ['Grievances', '/officer/grievances', '📢'],
+    ['Inspections', '/officer/inspections', '📅'], ['Surveyors', '/officer/surveyors', '🧭'],
   ],
   shipping: [
     ['Dashboard', '/shipping', '📊'], ['Register Shipment', '/shipping/new', '➕'],
@@ -36,17 +37,17 @@ const roleNav = {
   ],
 }
 
-function Shell({ title, role = 'customer', children }) {
+export function Shell({ title, role = 'customer', children }) {
   const nav = (roleNav[role] || roleNav.customer).map(([name, path, icon]) => ({ name, path, icon }))
   return <DashboardLayout title={title} roleLabel={role.replace('_', ' ')} navigation={nav}>{children}</DashboardLayout>
 }
 
-function ErrorNotice({ message }) {
+export function ErrorNotice({ message }) {
   if (!message) return null
   return <div className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{message}</div>
 }
 
-function DataTable({ rows }) {
+export function DataTable({ rows }) {
   const columns = useMemo(() => {
     const keys = new Set()
     rows.forEach((row) => Object.keys(row || {}).forEach((key) => {

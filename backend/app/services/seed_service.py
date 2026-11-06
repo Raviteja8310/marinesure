@@ -262,6 +262,28 @@ def seed_demo_environment(db: Session) -> Dict[str, Any]:
             status="paid",
         )
         db.add(order1)
+        db.flush()
+        tx1 = PaymentTransaction(
+            payment_order_id=order1.id,
+            gateway_payment_id="pay_demo_101",
+            gateway_signature="demo_seed",
+            amount=Decimal("38500.00"),
+            currency="INR",
+            status="success",
+        )
+        db.add(tx1)
+        db.flush()
+        from app.services import finance_service
+
+        finance_service.post_entry(
+            db,
+            entry_type="premium_received",
+            amount=Decimal("38500.00"),
+            reference_type="payment_transaction",
+            reference_id=tx1.id,
+            external_reference="pay_demo_101",
+            description="Premium received for order ORD-2026-000101 (demo)",
+        )
         db.commit()
 
         # Policy

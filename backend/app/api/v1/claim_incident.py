@@ -11,6 +11,7 @@ from app.database.connection import get_db
 from app.models.claim_incident import Incident, SurveyReport
 from app.models.user import Role, User
 from app.models.shipment import Shipment
+from app.services.rbac_service import require_permission
 from app.schemas.claim_incident import (
     ClaimAssignSurveyor,
     ClaimCreate,
@@ -166,6 +167,7 @@ def review_claim(
     payload: ClaimReview,
     db: Session = Depends(get_db),
     user_payload: dict = Depends(get_current_user_payload),
+    _perm: User = Depends(require_permission("claims.review")),
 ):
     """Insurance officer reviews claim, sets approved amount, and calculates deductible/net payable."""
     user = _user(db, user_payload)
@@ -178,6 +180,7 @@ def settle_claim(
     payload: ClaimSettle,
     db: Session = Depends(get_db),
     user_payload: dict = Depends(get_current_user_payload),
+    _perm: User = Depends(require_permission("claims.settle")),
 ):
     """Execute settlement payout for an approved claim."""
     user = _user(db, user_payload)

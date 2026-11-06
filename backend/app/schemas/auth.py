@@ -80,15 +80,8 @@ class ProfileUpdate(BaseModel):
 
 
 class RoleAssignRequest(BaseModel):
-    role: Literal[
-        "customer",
-        "shipping_company",
-        "surveyor",
-        "agent",
-        "insurance_officer",
-        "senior_officer",
-        "admin",
-    ]
+    # Built-in role names or a custom role created in the permission editor.
+    role: str = Field(pattern=r"^[a-z][a-z0-9_]{2,49}$")
     employee_code: Optional[str] = Field(default=None, max_length=40)
     department: Optional[str] = Field(default=None, max_length=80)
 

@@ -16,6 +16,7 @@ from app.schemas.auth import (
     UserPublic,
 )
 from app.services import auth_service
+from app.services.rbac_service import require_permission
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -63,7 +64,7 @@ def my_history(
 
 @router.get("", response_model=list[UserPublic])
 def list_users(
-    payload: dict = Depends(require_roles(UserRole.ADMIN)),
+    _actor: User = Depends(require_permission("users.view", "users.manage")),
     db: Session = Depends(get_db),
 ):
     users = db.query(User).order_by(User.created_at.desc()).all()
@@ -74,10 +75,9 @@ def list_users(
 def assign_role(
     user_id: str,
     data: RoleAssignRequest,
-    payload: dict = Depends(require_roles(UserRole.ADMIN)),
+    actor: User = Depends(require_permission("users.manage")),
     db: Session = Depends(get_db),
 ):
-    actor = _load(db, payload)
     target = auth_service.get_user(db, user_id)
     updated = auth_service.assign_role(db, actor, target, data.role, data)
     return auth_service.public_user(updated)
@@ -87,10 +87,9 @@ def assign_role(
 def change_status(
     user_id: str,
     data: StatusChangeRequest,
-    payload: dict = Depends(require_roles(UserRole.ADMIN)),
+    actor: User = Depends(require_permission("users.manage")),
     db: Session = Depends(get_db),
 ):
-    actor = _load(db, payload)
     target = auth_service.get_user(db, user_id)
     if actor.id == target.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot change your own status")

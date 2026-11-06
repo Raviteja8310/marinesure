@@ -5,6 +5,14 @@ from app.models.agent_audit import (  # noqa: F401
     AuditLog,
     Notification,
 )
+from app.models.rbac import Permission, RolePermission  # noqa: F401
+from app.models.finance import LedgerEntry, ReconciliationRun, Settlement  # noqa: F401
+from app.models.service_ops import (  # noqa: F401
+    Grievance,
+    GrievanceAttachment,
+    GrievanceComment,
+    InspectionAppointment,
+)
 from app.models.telemetry_ai import (  # noqa: F401
     ContainerTelemetry,
     DocumentExtractionRecord,

@@ -442,6 +442,9 @@ class IncidentClaimService:
         claim.settled_at = datetime.now(timezone.utc)
         claim.settlement_reference = settlement_reference or cls.generate_settlement_reference(db)
 
+        from app.services import finance_service
+
+        finance_service.record_claim_settlement(db, claim, current_user, claim.settlement_reference)
         db.commit()
         db.refresh(claim)
         return claim

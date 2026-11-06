@@ -8,12 +8,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import (
+    admin_products,
     agent_audit,
     analytics,
+    assistant,
     auth,
     claim_incident,
+    finance,
+    grievances,
+    inspections,
     insurance,
     payment_policy,
+    rbac,
     shipments,
     system,
     telemetry_ai,
@@ -98,6 +104,12 @@ def create_application() -> FastAPI:
     app.include_router(agent_audit.router, prefix="/api/v1")
     app.include_router(telemetry_ai.router, prefix="/api/v1")
     app.include_router(system.router, prefix="/api/v1")
+    app.include_router(rbac.router, prefix="/api/v1")
+    app.include_router(finance.router, prefix="/api/v1")
+    app.include_router(grievances.router, prefix="/api/v1")
+    app.include_router(inspections.router, prefix="/api/v1")
+    app.include_router(admin_products.router, prefix="/api/v1")
+    app.include_router(assistant.router, prefix="/api/v1")
 
     @app.get("/api/v1", tags=["System"])
     async def api_info():

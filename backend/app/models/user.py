@@ -104,6 +104,8 @@ class Role(Base):
     id = Column(String(36), primary_key=True, default=_uuid)
     role_name = Column(String(50), nullable=False, unique=True)
     description = Column(String(255), nullable=True)
+    # Built-in roles cannot be renamed or deleted from the permission editor.
+    is_system = Column(Boolean, nullable=False, default=False)
 
     users = relationship("User", secondary="user_roles", back_populates="roles")
 
