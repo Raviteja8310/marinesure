@@ -448,6 +448,10 @@ def assign_role(db: Session, actor: User, target: User, role_name: str, data) ->
         role = db.query(Role).filter(Role.role_name == role_name).one_or_none()
         if role is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Role '{role_name}' does not exist")
+    from app.services.rbac_service import ensure_can_grant_role, ensure_can_manage_user
+
+    ensure_can_manage_user(db, actor, target)
+    ensure_can_grant_role(db, actor, role)
     if role not in target.roles:
         target.roles.append(role)
     if role_name in ("insurance_officer", "senior_officer", "admin"):

@@ -47,7 +47,7 @@ def _make_user(email: str, *roles: str) -> tuple[str, str]:
         for r in roles:
             user.roles.append(db.query(Role).filter(Role.role_name == r).one())
         if set(roles) & {"insurance_officer", "senior_officer", "admin"}:
-            user.officer_profile = OfficerProfile(employee_code=f"EMP-{email[:10]}")
+            user.officer_profile = OfficerProfile(employee_code=f"EMP-{abs(hash(email)) % 10**9}")
         db.add(user)
         db.commit()
         token = create_access_token({"sub": user.id, "roles": list(roles)})
@@ -654,3 +654,79 @@ def test_assistant_answers_with_citations_and_scopes_records(client):
     assert recs and recs[0]["rank"] == 1 and recs[0]["is_eligible"] in (True, False)
     assert client.get(f"{API}/ai/assistant/recommendations?shipment_id={shipment_id}", headers=_auth(stranger)).status_code == 403
     assert client.post(f"{API}/ai/assistant/chat", json={"message": "hi"}).status_code == 401
+
+
+# ── Security hardening ─────────────────────────────────────────
+
+def _delegated_user_manager(client, admin):
+    """A non-admin with users.manage via a custom role."""
+    roles = client.post(f"{API}/admin/roles", json={"role_name": "user_manager", "permission_codes": ["users.manage", "users.view"]},
+                        headers=_auth(admin))
+    assert roles.status_code == 201, roles.text
+    mgr_id, _ = _make_user("delegate.mgr@example.com", "customer")
+    assert client.post(f"{API}/users/{mgr_id}/roles", json={"role": "user_manager"}, headers=_auth(admin)).status_code == 200
+    return create_access_token({"sub": mgr_id, "roles": ["customer", "user_manager"]})
+
+
+def test_delegated_manager_cannot_escalate(client):
+    _, admin = _make_user("esc.admin@example.com", "admin")
+    mgr = _delegated_user_manager(client, admin)
+    victim_id, _ = _make_user("esc.victim@example.com", "customer")
+    admin_id = client.get(f"{API}/users/me", headers=_auth(admin)).json()["id"]
+
+    client.post(f"{API}/admin/roles", json={"role_name": "treasurer", "permission_codes": ["finance.manage"]}, headers=_auth(admin))
+    r = client.post(f"{API}/users/{victim_id}/roles", json={"role": "treasurer"}, headers=_auth(mgr))
+    assert r.status_code == 403 and "finance.manage" in r.json()["detail"]
+    # Granting a role within the manager's own permissions is allowed.
+    client.post(f"{API}/admin/roles", json={"role_name": "viewer", "permission_codes": ["users.view"]}, headers=_auth(admin))
+    assert client.post(f"{API}/users/{victim_id}/roles", json={"role": "viewer"}, headers=_auth(mgr)).status_code == 200
+    # Cannot suspend an admin or anyone holding permissions the manager lacks.
+    assert client.post(f"{API}/users/{admin_id}/status", json={"status": "suspended"}, headers=_auth(mgr)).status_code == 403
+    officer_id, _ = _make_user("esc.officer@example.com", "insurance_officer")
+    assert client.post(f"{API}/users/{officer_id}/status", json={"status": "suspended"}, headers=_auth(mgr)).status_code == 403
+    assert client.post(f"{API}/users/{officer_id}/roles", json={"role": "viewer"}, headers=_auth(mgr)).status_code == 403
+
+
+def test_reconciliation_flags_duplicate_refs_and_nonzero_difference(client):
+    _, admin = _make_user("dup.admin@example.com", "admin")
+    for _ in range(2):
+        client.post(f"{API}/finance/ledger/adjustments", json={
+            "debit_account": "cash", "credit_account": "premium_income", "amount": "100.00",
+            "description": "manual premium", "external_reference": "pay_dup_1"}, headers=_auth(admin))
+    # adjustments aren't premium_received; post genuine premiums via direct service for this check
+    from app.services import finance_service
+    db = SessionLocal()
+    try:
+        for _ in range(2):
+            finance_service.post_entry(db, entry_type="premium_received", amount="100.00",
+                                       external_reference="pay_dup_2", description="dup premium")
+        db.commit()
+    finally:
+        db.close()
+    today = date.today().isoformat()
+    run = client.post(f"{API}/finance/reconciliations", json={
+        "source": "payment_gateway", "period_start": today, "period_end": today,
+        "lines": [{"reference": "pay_dup_2", "amount": "200.00"}]}, headers=_auth(admin)).json()
+    assert run["status"] == "mismatched"
+    assert run["results"]["duplicate_ledger_references"][0]["reference"] == "pay_dup_2"
+    assert run["matched_count"] == 0
+
+
+def test_payout_reference_must_be_unique(client):
+    a = _settled_claim(client, "uniq.a@example.com")
+    _approve_and_settle(client, a, reference="UTR-SAME")
+    b = _settled_claim(client, "uniq.b@example.com")
+    client.post(f"{API}/claims/{b['claim_id']}/survey-reports", json={
+        "inspection_date": "2026-11-06T15:00:00Z", "inspection_location": "Dock 3",
+        "damage_assessment": "Water damage to 40% of cartons confirmed on inspection.",
+        "cause_of_loss": "seawater_ingress", "is_covered_peril": True, "estimated_loss_amount": "190000.00",
+        "salvage_value": "10000.00", "recommended_settlement": "180000.00"}, headers=_auth(b["surveyor"]))
+    client.post(f"{API}/claims/{b['claim_id']}/review", json={"status": "approved", "approved_amount": "180000.00",
+                "officer_notes": "ok"}, headers=_auth(b["officer"]))
+    r = client.post(f"{API}/claims/{b['claim_id']}/settle", json={"settlement_reference": "UTR-SAME"}, headers=_auth(b["officer"]))
+    assert r.status_code == 409
+    assert client.get(f"{API}/claims/{b['claim_id']}", headers=_auth(b["cust"])).json()["status"] == "approved"
+
+    sid = client.get(f"{API}/settlements/me", headers=_auth(a["cust"])).json()[0]["id"]
+    client.post(f"{API}/settlements/{sid}/mark-failed", json={"reason": "account closed"}, headers=_auth(a["officer"]))
+    assert client.post(f"{API}/settlements/{sid}/retry", json={"payout_reference": "UTR-SAME"}, headers=_auth(a["officer"])).status_code == 409

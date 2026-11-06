@@ -16,7 +16,7 @@ from app.schemas.auth import (
     UserPublic,
 )
 from app.services import auth_service
-from app.services.rbac_service import require_permission
+from app.services.rbac_service import ensure_can_manage_user, require_permission
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -93,4 +93,5 @@ def change_status(
     target = auth_service.get_user(db, user_id)
     if actor.id == target.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot change your own status")
+    ensure_can_manage_user(db, actor, target)
     return auth_service.public_user(auth_service.set_status(db, target, data.status))

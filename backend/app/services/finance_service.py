@@ -265,8 +265,22 @@ def _history(settlement: Settlement, event_name: str, actor: Optional[User], **e
     settlement.history = [*(settlement.history or []), item]
 
 
+def _ensure_unique_payout_reference(db: Session, reference: str, exclude_settlement_id: Optional[str] = None) -> None:
+    q = db.query(Settlement).filter(Settlement.payout_reference == reference)
+    if exclude_settlement_id:
+        q = q.filter(Settlement.id != exclude_settlement_id)
+    clash = q.first() or db.query(LedgerEntry).filter(
+        LedgerEntry.external_reference == reference,
+        LedgerEntry.entry_type.in_(("claim_payout", "commission_payout")),
+        LedgerEntry.reference_id != (exclude_settlement_id or ""),
+    ).first()
+    if clash:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Payout reference '{reference}' has already been used")
+
+
 def record_claim_settlement(db: Session, claim: Claim, actor: User, payout_reference: str) -> Settlement:
     """Create the settlement record and post the payout to the ledger (no commit)."""
+    _ensure_unique_payout_reference(db, payout_reference)
     net = _money(claim.net_payable or 0)
     settlement = Settlement(
         settlement_number=next_settlement_number(db),
@@ -331,6 +345,9 @@ def mark_settlement_failed(db: Session, settlement: Settlement, reason: str, act
 def retry_settlement(db: Session, settlement: Settlement, payout_reference: str, actor: User) -> Settlement:
     if settlement.status != "failed":
         raise HTTPException(status.HTTP_409_CONFLICT, "Only failed settlements can be retried")
+    if payout_reference == settlement.payout_reference:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Use a new payout reference for the retried transfer")
+    _ensure_unique_payout_reference(db, payout_reference, exclude_settlement_id=settlement.id)
     if settlement.net_amount > 0:
         post_entry(
             db, entry_type="claim_payout", amount=settlement.net_amount, reference_type="settlement",
@@ -386,13 +403,16 @@ def reconcile(
             LedgerEntry.posted_at >= start, LedgerEntry.posted_at < end,
         ).all() if e.id not in done
     ]
-    internal: dict[str, LedgerEntry] = {}
+    grouped: dict[str, list[LedgerEntry]] = {}
     unreferenced = []
     for e in internal_rows:
         if e.external_reference:
-            internal[e.external_reference] = e
+            grouped.setdefault(e.external_reference, []).append(e)
         else:
             unreferenced.append(e)
+    # A reference posted more than once can never be "matched" by one statement line.
+    dup_ledger = {ref: rows for ref, rows in grouped.items() if len(rows) > 1}
+    internal: dict[str, LedgerEntry] = {ref: rows[0] for ref, rows in grouped.items() if len(rows) == 1}
 
     lines = [{"reference": str(l["reference"]).strip(), "amount": _money(l["amount"])} for l in lines]
     dup_refs = [ref for ref, n in Counter(l["reference"] for l in lines).items() if n > 1]
@@ -400,6 +420,8 @@ def reconcile(
 
     matched, mismatched, missing_internal, missing_statement = [], [], [], []
     for ref, amount in statement.items():
+        if ref in dup_ledger:
+            continue
         entry = internal.get(ref)
         if entry is None:
             missing_internal.append({"reference": ref, "statement_amount": str(amount)})
@@ -415,7 +437,8 @@ def reconcile(
 
     statement_total = sum((l["amount"] for l in lines), Decimal("0.00"))
     ledger_total = sum((_money(e.amount) for e in internal_rows), Decimal("0.00"))
-    clean = not (mismatched or missing_internal or missing_statement or dup_refs or unreferenced)
+    difference = statement_total - ledger_total
+    clean = not (mismatched or missing_internal or missing_statement or dup_refs or unreferenced or dup_ledger)         and difference == 0
 
     if source == "bank_payouts":
         matched_refs = {m["reference"] for m in matched}
@@ -430,7 +453,7 @@ def reconcile(
         period_end=end - timedelta(seconds=1),
         statement_total=statement_total,
         ledger_total=ledger_total,
-        difference=statement_total - ledger_total,
+        difference=difference,
         matched_count=len(matched),
         status="matched" if clean else "mismatched",
         results={
@@ -439,6 +462,11 @@ def reconcile(
             "missing_in_ledger": missing_internal,
             "missing_in_statement": missing_statement,
             "duplicate_statement_references": dup_refs,
+            "duplicate_ledger_references": [
+                {"reference": ref, "ledger_entries": [e.entry_number for e in rows],
+                 "statement_amount": str(statement[ref]) if ref in statement else None}
+                for ref, rows in dup_ledger.items()
+            ],
             "ledger_entries_without_reference": [e.entry_number for e in unreferenced],
         },
         notes=notes,

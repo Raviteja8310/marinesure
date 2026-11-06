@@ -102,6 +102,38 @@ def has_permission(db: Session, user: User, code: str) -> bool:
     return "admin" in user.role_names or code in permissions_for_user(db, user)
 
 
+def role_permissions(db: Session, role: Role) -> set[str]:
+    if role.role_name == "admin":
+        return {p.code for p in db.query(Permission).all()} | set(DEFAULT_PERMISSIONS)
+    rows = (
+        db.query(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .filter(RolePermission.role_id == role.id)
+        .all()
+    )
+    return {code for (code,) in rows}
+
+
+def ensure_can_grant_role(db: Session, actor: User, role: Role) -> None:
+    """Non-admins may only hand out roles whose permissions they already hold."""
+    if "admin" in actor.role_names:
+        return
+    missing = role_permissions(db, role) - permissions_for_user(db, actor)
+    if missing:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"You cannot assign a role with permissions you do not hold: {', '.join(sorted(missing))}",
+        )
+
+
+def ensure_can_manage_user(db: Session, actor: User, target: User) -> None:
+    """Non-admins may not act on admins or on anyone holding permissions they lack."""
+    if "admin" in actor.role_names:
+        return
+    if "admin" in target.role_names or not permissions_for_user(db, target) <= permissions_for_user(db, actor):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot manage a user with more privileges than you")
+
+
 def load_active_user(db: Session, payload: dict) -> User:
     user = db.get(User, payload.get("sub"))
     if user is None or user.status != "active":
