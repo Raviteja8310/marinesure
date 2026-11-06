@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import (
+    analytics,
     auth,
     claim_incident,
     insurance,
@@ -80,6 +81,7 @@ def create_application() -> FastAPI:
     app.include_router(insurance.router, prefix="/api/v1")
     app.include_router(payment_policy.router, prefix="/api/v1")
     app.include_router(claim_incident.router, prefix="/api/v1")
+    app.include_router(analytics.router, prefix="/api/v1")
 
     @app.get("/api/v1", tags=["System"])
     async def api_info():
