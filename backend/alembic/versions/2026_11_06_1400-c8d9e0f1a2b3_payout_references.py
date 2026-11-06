@@ -19,12 +19,7 @@ def upgrade() -> None:
     if "payout_references" not in sa.inspect(op.get_bind()).get_table_names():
         _create()
     # Register references already used by existing payouts.
-    op.execute(
-        "INSERT INTO payout_references (reference, source_type, source_id, created_at) "
-        "SELECT UPPER(TRIM(s.payout_reference)), 'settlement', s.claim_id, s.created_at FROM settlements s "
-        "WHERE s.payout_reference IS NOT NULL AND NOT EXISTS "
-        "(SELECT 1 FROM payout_references p WHERE p.reference = UPPER(TRIM(s.payout_reference)))"
-    )
+    # Full backfill (ledger history, commissions, de-duplication) is done in d9e0f1a2b3c4.
 
 
 def _create() -> None:

@@ -15,11 +15,12 @@ from sqlalchemy.engine import Engine
 
 from app.core.logging import get_logger
 from app.database.connection import Base, engine as default_engine
+from app.database.payout_backfill import BACKFILL_SQL
 import app.models  # noqa: F401
 
 logger = get_logger(__name__)
 
-HEAD_REVISION = "c8d9e0f1a2b3"
+HEAD_REVISION = "d9e0f1a2b3c4"
 SYSTEM_ROLES = ("customer", "shipping_company", "surveyor", "agent", "insurance_officer", "senior_officer", "admin")
 
 # (table, column, DDL type with default) for columns added to pre-existing tables.
@@ -63,6 +64,11 @@ def sync_schema(engine: Engine = default_engine) -> list[str]:
         if updated:
             changes.append(f"marked {updated} built-in roles")
         _ledger_triggers(conn, engine.dialect.name)
+
+        # Register every payout reference already used (same SQL as migration d9e0f1a2b3c4).
+        added = conn.execute(text(BACKFILL_SQL)).rowcount
+        if added and added > 0:
+            changes.append(f"registered {added} historical payout references")
 
         conn.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)"))
         current = [r[0] for r in conn.execute(text("SELECT version_num FROM alembic_version"))]

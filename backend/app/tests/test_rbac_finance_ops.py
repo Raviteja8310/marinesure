@@ -747,3 +747,29 @@ def test_payout_reference_must_be_unique(client):
             db.commit()
     finally:
         db.rollback(); db.close()
+
+
+def test_payout_reference_backfill_covers_ledger_history(client):
+    from app.database.payout_backfill import BACKFILL_SQL
+
+    ctx = _settled_claim(client, "backfill.flow@example.com")
+    _approve_and_settle(client, ctx, reference="UTR-FIRST")
+    sid = client.get(f"{API}/settlements/me", headers=_auth(ctx["cust"])).json()[0]["id"]
+    client.post(f"{API}/settlements/{sid}/mark-failed", json={"reason": "bounced"}, headers=_auth(ctx["officer"]))
+    client.post(f"{API}/settlements/{sid}/retry", json={"payout_reference": "UTR-SECOND"}, headers=_auth(ctx["officer"]))
+
+    db = SessionLocal()
+    try:
+        db.execute(text("DELETE FROM payout_references"))
+        db.commit()
+        db.execute(text(BACKFILL_SQL))
+        db.commit()
+        refs = sorted(r[0] for r in db.execute(text("SELECT reference FROM payout_references")))
+        assert refs == ["UTR-FIRST", "UTR-SECOND"]  # failed attempt survives only in the ledger
+        db.execute(text(BACKFILL_SQL))  # idempotent
+        db.commit()
+        assert db.execute(text("SELECT COUNT(*) FROM payout_references")).scalar() == 2
+    finally:
+        db.close()
+    assert client.post(f"{API}/settlements/{sid}/mark-failed", json={"reason": "bounced again"}, headers=_auth(ctx["officer"])).status_code == 200
+    assert client.post(f"{API}/settlements/{sid}/retry", json={"payout_reference": "utr-first"}, headers=_auth(ctx["officer"])).status_code == 409
