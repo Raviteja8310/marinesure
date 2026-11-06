@@ -14,12 +14,14 @@ from typing import Iterable, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.claim_incident import Claim
 from app.models.finance import (
     LEDGER_ACCOUNTS,
     LedgerEntry,
+    PayoutReference,
     ReconciliationRun,
     Settlement,
     _utc_now_seconds,
@@ -265,22 +267,32 @@ def _history(settlement: Settlement, event_name: str, actor: Optional[User], **e
     settlement.history = [*(settlement.history or []), item]
 
 
-def _ensure_unique_payout_reference(db: Session, reference: str, exclude_settlement_id: Optional[str] = None) -> None:
-    q = db.query(Settlement).filter(Settlement.payout_reference == reference)
-    if exclude_settlement_id:
-        q = q.filter(Settlement.id != exclude_settlement_id)
-    clash = q.first() or db.query(LedgerEntry).filter(
-        LedgerEntry.external_reference == reference,
-        LedgerEntry.entry_type.in_(("claim_payout", "commission_payout")),
-        LedgerEntry.reference_id != (exclude_settlement_id or ""),
-    ).first()
-    if clash:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Payout reference '{reference}' has already been used")
+def normalize_reference(reference: str) -> str:
+    ref = (reference or "").strip().upper()
+    if not ref:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Payout reference is required")
+    return ref
+
+
+def claim_payout_reference(db: Session, reference: str, source_type: str, source_id: str) -> str:
+    """Reserve a payout reference. Fails with 409 if it was ever used before, by
+    anyone (including an earlier attempt of the same payout). The unique key on
+    ``payout_references`` closes the race between concurrent requests."""
+    ref = normalize_reference(reference)
+    if db.get(PayoutReference, ref) is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Payout reference '{ref}' has already been used")
+    try:
+        with db.begin_nested():
+            db.add(PayoutReference(reference=ref, source_type=source_type, source_id=source_id))
+    except IntegrityError:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Payout reference '{ref}' has already been used")
+    return ref
 
 
 def record_claim_settlement(db: Session, claim: Claim, actor: User, payout_reference: str) -> Settlement:
     """Create the settlement record and post the payout to the ledger (no commit)."""
-    _ensure_unique_payout_reference(db, payout_reference)
+    payout_reference = claim_payout_reference(db, payout_reference, "settlement", claim.id)
+    claim.settlement_reference = payout_reference
     net = _money(claim.net_payable or 0)
     settlement = Settlement(
         settlement_number=next_settlement_number(db),
@@ -345,9 +357,7 @@ def mark_settlement_failed(db: Session, settlement: Settlement, reason: str, act
 def retry_settlement(db: Session, settlement: Settlement, payout_reference: str, actor: User) -> Settlement:
     if settlement.status != "failed":
         raise HTTPException(status.HTTP_409_CONFLICT, "Only failed settlements can be retried")
-    if payout_reference == settlement.payout_reference:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Use a new payout reference for the retried transfer")
-    _ensure_unique_payout_reference(db, payout_reference, exclude_settlement_id=settlement.id)
+    payout_reference = claim_payout_reference(db, payout_reference, "settlement", settlement.claim_id)
     if settlement.net_amount > 0:
         post_entry(
             db, entry_type="claim_payout", amount=settlement.net_amount, reference_type="settlement",

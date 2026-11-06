@@ -685,6 +685,9 @@ def test_delegated_manager_cannot_escalate(client):
     officer_id, _ = _make_user("esc.officer@example.com", "insurance_officer")
     assert client.post(f"{API}/users/{officer_id}/status", json={"status": "suspended"}, headers=_auth(mgr)).status_code == 403
     assert client.post(f"{API}/users/{officer_id}/roles", json={"role": "viewer"}, headers=_auth(mgr)).status_code == 403
+    # Built-in roles carry name-based authority, so only admins may assign them.
+    r = client.post(f"{API}/users/{victim_id}/roles", json={"role": "surveyor"}, headers=_auth(mgr))
+    assert r.status_code == 403 and "built-in" in r.json()["detail"]
 
 
 def test_reconciliation_flags_duplicate_refs_and_nonzero_difference(client):
@@ -730,3 +733,17 @@ def test_payout_reference_must_be_unique(client):
     sid = client.get(f"{API}/settlements/me", headers=_auth(a["cust"])).json()[0]["id"]
     client.post(f"{API}/settlements/{sid}/mark-failed", json={"reason": "account closed"}, headers=_auth(a["officer"]))
     assert client.post(f"{API}/settlements/{sid}/retry", json={"payout_reference": "UTR-SAME"}, headers=_auth(a["officer"])).status_code == 409
+    # Normalisation: case and whitespace variants are the same reference.
+    assert client.post(f"{API}/settlements/{sid}/retry", json={"payout_reference": "  utr-same "}, headers=_auth(a["officer"])).status_code == 409
+    ok = client.post(f"{API}/settlements/{sid}/retry", json={"payout_reference": "utr-new-1"}, headers=_auth(a["officer"]))
+    assert ok.status_code == 200 and ok.json()["payout_reference"] == "UTR-NEW-1"
+    # Database-level guard: a direct duplicate insert is rejected.
+    from sqlalchemy.exc import IntegrityError
+    from app.models.finance import PayoutReference
+    db = SessionLocal()
+    try:
+        db.add(PayoutReference(reference="UTR-NEW-1", source_type="settlement", source_id="x"))
+        with pytest.raises(IntegrityError):
+            db.commit()
+    finally:
+        db.rollback(); db.close()

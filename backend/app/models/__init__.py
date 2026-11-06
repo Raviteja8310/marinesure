@@ -6,7 +6,7 @@ from app.models.agent_audit import (  # noqa: F401
     Notification,
 )
 from app.models.rbac import Permission, RolePermission  # noqa: F401
-from app.models.finance import LedgerEntry, ReconciliationRun, Settlement  # noqa: F401
+from app.models.finance import LedgerEntry, PayoutReference, ReconciliationRun, Settlement  # noqa: F401
 from app.models.service_ops import (  # noqa: F401
     Grievance,
     GrievanceAttachment,

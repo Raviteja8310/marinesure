@@ -225,9 +225,14 @@ class AgentService:
 
         comm.status = "paid"
         comm.paid_at = datetime.now(timezone.utc)
-        comm.payout_reference = payout_reference or f"PAY-COM-{datetime.now(timezone.utc):%Y%m%d}-{comm.id[:6]}"
-
         from app.services import finance_service
+
+        comm.payout_reference = finance_service.claim_payout_reference(
+            db,
+            payout_reference or f"PAY-COM-{datetime.now(timezone.utc):%Y%m%d}-{comm.id[:6]}",
+            "agent_commission",
+            comm.id,
+        )
 
         if comm.commission_amount and comm.commission_amount > 0:
             finance_service.post_entry(

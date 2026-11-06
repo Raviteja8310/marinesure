@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
+import ErrorBoundary from './components/ErrorBoundary'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './routes/ProtectedRoute'
 import Login from './pages/auth/Login'
@@ -22,6 +23,12 @@ import AdminAudit from './pages/admin/AdminAudit'
 import api from './services/api'
 import { ApiListPage, ProfilePage, NotificationsPage, AdminUsersPage } from './pages/shared/OperationalPages'
 import { PaymentsPage, SettlementsPage, GrievancesPage, AssistantPage, RolesPermissionsPage, AdminProductsPage, FinancePage, InspectionsPage, SurveyorReportsPage } from './pages/shared/OpsModules'
+
+// Resets after navigation so a crash on one page doesn't block the others.
+function RouteErrorBoundary({ children }) {
+  const location = useLocation()
+  return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
+}
 
 function LandingPage() {
   const [backendStatus, setBackendStatus] = useState(null)
@@ -165,6 +172,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <RouteErrorBoundary>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
@@ -349,6 +357,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </RouteErrorBoundary>
       </BrowserRouter>
     </AuthProvider>
   )

@@ -121,6 +121,18 @@ class Settlement(Base, TimestampMixin):
     customer = relationship("User", foreign_keys=[customer_id])
 
 
+class PayoutReference(Base):
+    """Every bank/UTR reference ever used for an outgoing payout. The unique key
+    makes reuse impossible even under concurrent requests."""
+
+    __tablename__ = "payout_references"
+
+    reference = Column(String(100), primary_key=True)
+    source_type = Column(String(30), nullable=False)  # settlement, agent_commission
+    source_id = Column(String(36), nullable=False, index=True)
+    created_at = Column(DateTime, nullable=False, default=_utc_now_seconds)
+
+
 class ReconciliationRun(Base):
     """Comparison of an external statement (gateway or bank) against internal records."""
 

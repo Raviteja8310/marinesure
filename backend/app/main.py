@@ -28,6 +28,7 @@ from app.api.v1 import (
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.database.connection import SessionLocal, Base, engine
+from app.scripts.sync_schema import sync_schema
 from app.services.auth_service import seed_roles
 from app.services.seed_service import seed_demo_environment
 import app.models  # noqa: F401
@@ -46,7 +47,7 @@ async def lifespan(app: FastAPI):
         # Schema creation and demo accounts are development conveniences only.
         # Production schema changes must be applied through Alembic migrations.
         if settings.APP_ENV.lower() == "development" and settings.DEBUG:
-            Base.metadata.create_all(bind=engine)
+            sync_schema(engine)
             seed_roles(db)
             seed_demo_environment(db)
             logger.info("Development database initialized and demo environment seeded")

@@ -115,9 +115,16 @@ def role_permissions(db: Session, role: Role) -> set[str]:
 
 
 def ensure_can_grant_role(db: Session, actor: User, role: Role) -> None:
-    """Non-admins may only hand out roles whose permissions they already hold."""
+    """Non-admins may only hand out custom roles whose permissions they already hold.
+
+    Built-in roles also carry authority through their name (e.g. "surveyor",
+    "insurance_officer" are checked directly in services), so only an
+    administrator may assign them.
+    """
     if "admin" in actor.role_names:
         return
+    if role.is_system or role.role_name in DEFAULT_ROLE_PERMISSIONS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an administrator can assign built-in roles")
     missing = role_permissions(db, role) - permissions_for_user(db, actor)
     if missing:
         raise HTTPException(
@@ -130,7 +137,12 @@ def ensure_can_manage_user(db: Session, actor: User, target: User) -> None:
     """Non-admins may not act on admins or on anyone holding permissions they lack."""
     if "admin" in actor.role_names:
         return
-    if "admin" in target.role_names or not permissions_for_user(db, target) <= permissions_for_user(db, actor):
+    target_roles, actor_roles = set(target.role_names), set(actor.role_names) | {"customer"}
+    if (
+        "admin" in target_roles
+        or not target_roles <= actor_roles | {r.role_name for r in target.roles if not r.is_system}
+        or not permissions_for_user(db, target) <= permissions_for_user(db, actor)
+    ):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot manage a user with more privileges than you")
 
 
