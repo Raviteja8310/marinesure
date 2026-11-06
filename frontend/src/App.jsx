@@ -93,10 +93,6 @@ function LandingPage() {
       {/* Hero */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col justify-center">
         <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-x-2 rounded-full px-3 py-1 text-xs font-medium bg-marine-500/10 text-marine-300 border border-marine-500/20 mb-6">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            Phase 2 Authenticated Multi-Role System Active
-          </div>
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-white via-marine-100 to-marine-300 bg-clip-text text-transparent">
             Marine Cargo Insurance, Protection & Claims
           </h1>
