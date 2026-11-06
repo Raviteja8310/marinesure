@@ -10,6 +10,7 @@ from app.core.permissions import get_current_user_payload
 from app.database.connection import get_db
 from app.models.claim_incident import Incident, SurveyReport
 from app.models.user import Role, User
+from app.models.shipment import Shipment
 from app.schemas.claim_incident import (
     ClaimAssignSurveyor,
     ClaimCreate,
@@ -31,6 +32,18 @@ def _user(db: Session, payload: dict) -> User:
     if user is None or user.status != "active":
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account is not active")
     return user
+
+
+def _ensure_shipment_access(db: Session, shipment_id: str, user: User) -> Shipment:
+    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    if not shipment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Shipment not found")
+    roles = set(user.role_names)
+    if roles.intersection({"admin", "insurance_officer", "senior_officer"}):
+        return shipment
+    if user.id not in {shipment.customer_id, shipment.shipping_company_id}:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not allowed to access this shipment")
+    return shipment
 
 
 # ── Incidents ───────────────────────────────────────────────────
@@ -63,10 +76,11 @@ def get_incident(
     user_payload: dict = Depends(get_current_user_payload),
 ):
     """Get single incident details."""
-    _user(db, user_payload)
+    user = _user(db, user_payload)
     incident = db.query(Incident).filter(Incident.id == incident_id).first()
     if not incident:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Incident not found")
+    _ensure_shipment_access(db, incident.shipment_id, user)
     return incident
 
 

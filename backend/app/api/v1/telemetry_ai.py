@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.permissions import get_current_user_payload
 from app.database.connection import get_db
 from app.models.user import User
+from app.models.shipment import Shipment
 from app.schemas.telemetry_ai import (
     ContainerTelemetryCreate,
     ContainerTelemetryOut,
@@ -34,6 +35,18 @@ def _user(db: Session, payload: dict) -> User:
     return user
 
 
+def _ensure_shipment_access(db: Session, shipment_id: str, user: User) -> Shipment:
+    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    if not shipment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Shipment not found")
+    roles = set(user.role_names)
+    if roles.intersection({"admin", "insurance_officer", "senior_officer"}):
+        return shipment
+    if user.id not in {shipment.customer_id, shipment.shipping_company_id}:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not allowed to access this shipment")
+    return shipment
+
+
 # ── IoT Telemetry Endpoints ─────────────────────────────────────
 
 @router.post("/telemetry/ingest", response_model=ContainerTelemetryOut, status_code=201)
@@ -47,6 +60,7 @@ def ingest_telemetry(
     Triggers automated casualty incident if cold-chain or drop impact threshold is breached.
     """
     user = _user(db, user_payload)
+    _ensure_shipment_access(db, payload.shipment_id, user)
     return TelemetryEngine.ingest_telemetry(db, payload, user)
 
 
@@ -58,7 +72,8 @@ def get_shipment_telemetry(
     user_payload: dict = Depends(get_current_user_payload),
 ):
     """Retrieve telemetry log stream for a specific shipment."""
-    _user(db, user_payload)
+    user = _user(db, user_payload)
+    _ensure_shipment_access(db, shipment_id, user)
     return TelemetryEngine.get_shipment_telemetry(db, shipment_id, limit=limit)
 
 
@@ -69,7 +84,8 @@ def get_shipment_telemetry_summary(
     user_payload: dict = Depends(get_current_user_payload),
 ):
     """Retrieve aggregated IoT sensor health KPIs (current temp, max shock, door status)."""
-    _user(db, user_payload)
+    user = _user(db, user_payload)
+    _ensure_shipment_access(db, shipment_id, user)
     return TelemetryEngine.get_telemetry_summary(db, shipment_id)
 
 

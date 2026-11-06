@@ -21,8 +21,10 @@ from app.api.v1 import (
 )
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
-from app.database.connection import SessionLocal
+from app.database.connection import SessionLocal, Base, engine
 from app.services.auth_service import seed_roles
+from app.services.seed_service import seed_demo_environment
+import app.models  # noqa: F401
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -35,9 +37,17 @@ async def lifespan(app: FastAPI):
     logger.info("Starting %s in %s mode", settings.APP_NAME, settings.APP_ENV)
     db = SessionLocal()
     try:
-        seed_roles(db)
-    except Exception:
-        logger.warning("Role seed skipped; database is not reachable yet")
+        # Schema creation and demo accounts are development conveniences only.
+        # Production schema changes must be applied through Alembic migrations.
+        if settings.APP_ENV.lower() == "development" and settings.DEBUG:
+            Base.metadata.create_all(bind=engine)
+            seed_roles(db)
+            seed_demo_environment(db)
+            logger.info("Development database initialized and demo environment seeded")
+        else:
+            logger.info("Skipping automatic schema creation and demo seeding outside development")
+    except Exception as e:
+        logger.warning("Database initialization skipped or failed: %s", e)
     finally:
         db.close()
     yield

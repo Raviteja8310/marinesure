@@ -9,6 +9,7 @@ from sqlalchemy import text
 from app.core.config import get_settings
 from app.database.connection import get_db
 from app.services.seed_service import seed_demo_environment
+from app.core.permissions import UserRole, require_roles
 
 router = APIRouter(tags=["System Administration & Diagnostics"])
 settings = get_settings()
@@ -53,6 +54,14 @@ from datetime import datetime
 
 
 @router.post("/system/seed-demo")
-def seed_demo_data(db: Session = Depends(get_db)):
-    """Seed comprehensive demo accounts, shipments, policies, and telemetry."""
+def seed_demo_data(
+    db: Session = Depends(get_db),
+    _admin: dict = Depends(require_roles(UserRole.ADMIN)),
+):
+    """Seed demo records only in an explicitly enabled development environment."""
+    if settings.APP_ENV.lower() != "development" or not settings.DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Demo seeding is disabled outside development",
+        )
     return seed_demo_environment(db)
