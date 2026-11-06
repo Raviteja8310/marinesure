@@ -46,7 +46,7 @@ def upgrade() -> None:
         sa.Column("message", sa.Text(), nullable=False),
         sa.Column("notification_type", sa.String(30), nullable=False, server_default="info"),
         sa.Column("link", sa.String(255), nullable=True),
-        sa.Column("is_read", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column("is_read", sa.Boolean(), nullable=False, server_default=sa.text("0")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_notifications_user_id", "notifications", ["user_id"])

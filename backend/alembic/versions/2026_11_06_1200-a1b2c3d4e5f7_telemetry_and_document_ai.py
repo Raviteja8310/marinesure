@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.Column("latitude", sa.Numeric(9, 6), nullable=True),
         sa.Column("longitude", sa.Numeric(9, 6), nullable=True),
         sa.Column("location_name", sa.String(150), nullable=True),
-        sa.Column("is_anomaly", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column("is_anomaly", sa.Boolean(), nullable=False, server_default=sa.text("0")),
         sa.Column("anomaly_details", sa.String(255), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),

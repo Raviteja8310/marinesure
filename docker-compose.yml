@@ -6,15 +6,13 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: marinesure
-      MYSQL_USER: marinesure_app
-      MYSQL_PASSWORD: change_me
-      MYSQL_ROOT_PASSWORD: change_me_root
+      MYSQL_ROOT_PASSWORD: root
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "marinesure_app", "-pchange_me"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,8 +43,8 @@ services:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=marinesure
-      - MYSQL_USER=marinesure_app
-      - MYSQL_PASSWORD=change_me
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
       - JWT_SECRET_KEY=dev_secret_key_marinesure_2_0_change_in_production
       - REDIS_URL=redis://redis:6379/0
       - APP_ENV=development

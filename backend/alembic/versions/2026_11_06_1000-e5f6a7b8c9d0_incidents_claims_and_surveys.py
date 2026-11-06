@@ -82,7 +82,7 @@ def upgrade() -> None:
         sa.Column("inspection_location", sa.String(255), nullable=False),
         sa.Column("damage_assessment", sa.Text(), nullable=False),
         sa.Column("cause_of_loss", sa.String(100), nullable=False),
-        sa.Column("is_covered_peril", sa.Boolean(), nullable=False, server_default="true"),
+        sa.Column("is_covered_peril", sa.Boolean(), nullable=False, server_default=sa.text("1")),
         sa.Column("estimated_loss_amount", sa.Numeric(14, 2), nullable=False),
         sa.Column("salvage_value", sa.Numeric(14, 2), nullable=False, server_default="0"),
         sa.Column("recommended_settlement", sa.Numeric(14, 2), nullable=False),
