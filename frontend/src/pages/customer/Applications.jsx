@@ -13,15 +13,47 @@ const NAV = [
 export function ApplicationsList() {
   const [apps, setApps] = useState([])
   const [loading, setLoading] = useState(true)
+  const [payingId, setPayingId] = useState(null)
+  const [msg, setMsg] = useState('')
 
-  useEffect(() => {
+  const load = () =>
     api.get('/applications')
       .then((res) => setApps(res.data))
       .finally(() => setLoading(false))
+
+  useEffect(() => {
+    load()
   }, [])
+
+  const handlePay = async (appId) => {
+    setPayingId(appId)
+    setMsg('')
+    try {
+      // 1. Create order
+      const orderRes = await api.post('/payments/create-order', { application_id: appId })
+      const order = orderRes.data
+
+      // 2. Simulate Razorpay Test Mode confirmation & backend verification
+      await api.post(`/payments/${order.id}/verify`, {
+        gateway_payment_id: `pay_test_${Date.now()}`,
+        gateway_signature: 'test_mode_signature',
+      })
+
+      setMsg('Payment verified! Insurance Policy & PDF certificate issued.')
+      window.location.href = '/customer/policies'
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Payment failed')
+      setPayingId(null)
+    }
+  }
 
   return (
     <DashboardLayout title="My Insurance Applications" roleLabel="Customer" navigation={NAV}>
+      {msg && (
+        <div className="p-4 mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+          {msg}
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <p className="text-sm text-slate-400">
           Track underwriting reviews and approval status for registered shipments.
@@ -42,7 +74,7 @@ export function ApplicationsList() {
               <th className="text-left px-4 py-3">Insured Amount</th>
               <th className="text-left px-4 py-3">Estimated Premium</th>
               <th className="text-left px-4 py-3">Status</th>
-              <th className="text-left px-4 py-3">Officer Remarks</th>
+              <th className="text-left px-4 py-3">Actions</th>
               <th className="text-right px-4 py-3">Date</th>
             </tr>
           </thead>
@@ -69,8 +101,18 @@ export function ApplicationsList() {
                     {a.status.replaceAll('_', ' ')}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400 max-w-xs truncate">
-                  {a.officer_remarks || '—'}
+                <td className="px-4 py-3 text-xs">
+                  {a.status === 'approved' ? (
+                    <button
+                      onClick={() => handlePay(a.id)}
+                      disabled={payingId === a.id}
+                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-semibold transition disabled:opacity-50"
+                    >
+                      {payingId === a.id ? 'Processing...' : '💳 Pay & Issue Policy'}
+                    </button>
+                  ) : (
+                    <span className="text-slate-500">{a.officer_remarks || 'Under review'}</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right text-xs text-slate-400">
                   {new Date(a.created_at).toLocaleDateString()}

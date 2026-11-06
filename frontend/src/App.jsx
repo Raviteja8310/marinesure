@@ -8,6 +8,7 @@ import CustomerDashboard from './pages/customer/CustomerDashboard'
 import { ShipmentList, RegisterShipment } from './pages/customer/Shipments'
 import InsuranceProducts from './pages/customer/InsuranceProducts'
 import { ApplicationsList, NewApplication } from './pages/customer/Applications'
+import PoliciesList from './pages/customer/Policies'
 import ShippingDashboard from './pages/shipping/ShippingDashboard'
 import Tracking from './pages/shipping/Tracking'
 import SurveyorDashboard from './pages/surveyor/SurveyorDashboard'
@@ -214,6 +215,22 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['customer']}>
                 <NewApplication />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/policies"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <PoliciesList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/payments"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <PoliciesList />
               </ProtectedRoute>
             }
           />

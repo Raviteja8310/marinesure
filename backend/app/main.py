@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, insurance, shipments, users
+from app.api.v1 import auth, insurance, payment_policy, shipments, users
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.database.connection import SessionLocal
@@ -71,6 +71,7 @@ def create_application() -> FastAPI:
     app.include_router(users.router, prefix="/api/v1")
     app.include_router(shipments.router, prefix="/api/v1")
     app.include_router(insurance.router, prefix="/api/v1")
+    app.include_router(payment_policy.router, prefix="/api/v1")
 
     @app.get("/api/v1", tags=["System"])
     async def api_info():
