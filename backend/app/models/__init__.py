@@ -5,6 +5,10 @@ from app.models.agent_audit import (  # noqa: F401
     AuditLog,
     Notification,
 )
+from app.models.telemetry_ai import (  # noqa: F401
+    ContainerTelemetry,
+    DocumentExtractionRecord,
+)
 from app.models.claim_incident import (  # noqa: F401
     Claim,
     Incident,

@@ -17,6 +17,11 @@ export default function SurveyorDashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
 
+  // AI Damage Vision State
+  const [visionImageKey, setVisionImageKey] = useState('water_ingress')
+  const [analyzingVision, setAnalyzingVision] = useState(false)
+  const [visionResult, setVisionResult] = useState(null)
+
   const [formData, setFormData] = useState({
     inspection_date: new Date().toISOString().slice(0, 16),
     inspection_location: '',
@@ -45,6 +50,7 @@ export default function SurveyorDashboard() {
 
   const openSurveyModal = (claim) => {
     setSelectedClaim(claim)
+    setVisionResult(null)
     setFormData({
       inspection_date: new Date().toISOString().slice(0, 16),
       inspection_location: 'Container Freight Station / Terminal',
@@ -56,6 +62,34 @@ export default function SurveyorDashboard() {
       recommended_settlement: claim.claim_amount,
     })
     setShowSurveyModal(true)
+  }
+
+  const handleRunAiVision = async () => {
+    setAnalyzingVision(true)
+    try {
+      const res = await api.post('/ai/analyze-damage', {
+        image_url_or_base64: `cargo_photo_${visionImageKey}.jpg`,
+        cargo_category: selectedClaim?.claim_type || 'general',
+      })
+      const v = res.data
+      setVisionResult(v)
+
+      // Auto-suggest fields from AI analysis
+      setFormData((prev) => ({
+        ...prev,
+        cause_of_loss: v.detected_damage_type.includes('water')
+          ? 'seawater_damage'
+          : v.detected_damage_type.includes('spoilage')
+          ? 'reefer_temperature_breach'
+          : 'rough_handling',
+        is_covered_peril: v.peril_coverage_status.includes('covered'),
+        damage_assessment: `[AI Vision Assessment (${v.confidence_pct}%)]: ${v.detected_damage_type.replaceAll('_', ' ').toUpperCase()}. Symptoms: ${v.damage_symptoms.join(', ')}. Action: ${v.recommended_surveyor_action}`,
+      }))
+    } catch (err) {
+      alert(err.response?.data?.detail || 'AI Vision analysis failed')
+    } finally {
+      setAnalyzingVision(false)
+    }
   }
 
   const handleSubmitReport = async (e) => {
@@ -73,7 +107,7 @@ export default function SurveyorDashboard() {
         salvage_value: parseFloat(formData.salvage_value || 0),
         recommended_settlement: parseFloat(formData.recommended_settlement),
         evidence_photos: [
-          { name: 'cargo_inspection_1.jpg', url: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec' },
+          { name: `cargo_damage_${visionImageKey}.jpg`, url: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec' },
         ],
       })
       setMsg(`Inspection report submitted for Claim ${selectedClaim.claim_number}!`)
@@ -95,7 +129,7 @@ export default function SurveyorDashboard() {
   ).length
 
   return (
-    <DashboardLayout title="Surveyor Inspection Portal" roleLabel="Marine Surveyor" navigation={NAV}>
+    <DashboardLayout title="Surveyor Inspection & AI Vision Portal" roleLabel="Marine Surveyor" navigation={NAV}>
       {msg && (
         <div className="p-4 mb-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           {msg}
@@ -194,16 +228,63 @@ export default function SurveyorDashboard() {
         </table>
       </div>
 
-      {/* Survey Modal */}
+      {/* Survey Modal with Computer Vision Assistant */}
       {showSurveyModal && selectedClaim && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-white mb-1">
               Marine Damage Inspection Report
             </h3>
             <p className="text-xs text-slate-400 mb-4">
               Surveying Claim <strong className="text-marine-400 font-mono">{selectedClaim.claim_number}</strong> (Claimed: ₹{Number(selectedClaim.claim_amount).toLocaleString()})
             </p>
+
+            {/* AI Computer Vision Assistant Box */}
+            <div className="mb-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">📸</span>
+                <span className="font-bold text-white">AI Damage Photo Vision Classifier</span>
+                <span className="text-[10px] text-marine-400 font-semibold px-2 py-0.5 rounded bg-marine-500/10">
+                  ICC Peril Analyzer
+                </span>
+              </div>
+              <p className="text-slate-400 text-[11px] mb-3">
+                Select sample photo casualty pattern to test AI vision classification against Institute Cargo Clauses.
+              </p>
+              <div className="flex gap-2">
+                <select
+                  value={visionImageKey}
+                  onChange={(e) => setVisionImageKey(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-white text-xs flex-1"
+                >
+                  <option value="water_ingress">Photo A: Seawater Ingress & Rust Corrosion</option>
+                  <option value="crush_impact">Photo B: Rough Cargo Handling & Pallet Crush</option>
+                  <option value="thermal_spoilage_mold">Photo C: Reefer Temperature Failure & Spoilage</option>
+                  <option value="container_breach">Photo D: Structural Container Puncture</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={handleRunAiVision}
+                  disabled={analyzingVision}
+                  className="px-4 py-1.5 bg-marine-600 hover:bg-marine-500 text-white rounded font-semibold transition"
+                >
+                  {analyzingVision ? 'Analyzing...' : '⚡ Run Vision AI'}
+                </button>
+              </div>
+
+              {visionResult && (
+                <div className="mt-3 pt-3 border-t border-slate-800/80 text-[11px] space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-emerald-400 uppercase">
+                      Detected: {visionResult.detected_damage_type.replaceAll('_', ' ')} ({visionResult.confidence_pct}%)
+                    </span>
+                    <span className="text-slate-400">Severity: <strong className="text-white uppercase">{visionResult.severity_rating}</strong></span>
+                  </div>
+                  <p className="text-slate-300"><strong>ICC Clauses:</strong> {visionResult.icc_clauses_applied.join(', ')}</p>
+                  <p className="text-slate-400"><strong>Symptoms:</strong> {visionResult.damage_symptoms.join(' • ')}</p>
+                </div>
+              )}
+            </div>
 
             <form onSubmit={handleSubmitReport} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
@@ -273,7 +354,7 @@ export default function SurveyorDashboard() {
                   placeholder="Record container condition, seal integrity, visual inspection of packaging, water marks, mold, extent of compromised units..."
                   value={formData.damage_assessment}
                   onChange={(e) => setFormData({ ...formData, damage_assessment: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono"
                 />
               </div>
 
