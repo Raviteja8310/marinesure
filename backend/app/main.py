@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – FastAPI Application Factory & Main Entrypoint
+MarineSure – FastAPI Application Factory & Main Entrypoint
 """
 
 from contextlib import asynccontextmanager

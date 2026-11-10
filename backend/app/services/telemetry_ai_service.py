@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – IoT Telemetry Ingestion, Automated Anomaly Incident Generator,
+MarineSure – IoT Telemetry Ingestion, Automated Anomaly Incident Generator,
 Bill of Lading Extraction, and Computer Vision Casualty Classifier.
 """
 
@@ -185,37 +185,35 @@ class DocumentAIService:
     ) -> ExtractedBillOfLading:
         text = payload.document_text
 
-        # Regex heuristic parsers for standard maritime B/L fields
-        bl_match = re.search(r"(?:B/?L\s*(?:NO|NUMBER)?[:.]?\s*)([A-Z0-9\-_]{6,20})", text, re.IGNORECASE)
-        bl_num = bl_match.group(1).strip() if bl_match else f"BL-MEDU{abs(hash(text)) % 1000000:06d}"
+        def grab(pattern: str):
+            m = re.search(pattern, text, re.IGNORECASE)
+            return m.group(1).strip(" ,.:") if m else None
 
-        vessel_match = re.search(r"(?:VESSEL|SHIP)[:.]?\s*([A-Za-z0-9\s\-]+?)(?:\s+VOY|\s+IMO|\n|,)", text, re.IGNORECASE)
-        vessel = vessel_match.group(1).strip() if vessel_match else "MSC ISABELLA"
+        # Regex extraction of standard B/L fields. Anything not found is returned
+        # as None: the parser never invents a vessel, port, party or container.
+        bl_num = grab(r"(?:B/?L\s*(?:NO|NUMBER)?[:.]?\s*)([A-Z0-9\-_]{6,20})")
+        vessel = grab(r"(?:VESSEL|SHIP)[:.]?\s*([A-Za-z0-9 \-]+?)(?:\s+VOY|\s+IMO|\n|,)")
+        voyage = grab(r"(?:VOY|VOYAGE)(?:\s*NO)?[:.]?\s*([A-Z0-9\-]+)")
+        pol = grab(r"(?:PORT OF LOADING|POL)[:.]?\s*([A-Za-z ,()]+?)(?:\n|PORT OF DISCHARGE|POD)")
+        pod = grab(r"(?:PORT OF DISCHARGE|POD)[:.]?\s*([A-Za-z ,()]+?)(?:\n|PLACE OF DELIVERY|$)")
+        delivery = grab(r"PLACE OF DELIVERY[:.]?\s*([A-Za-z ,()]+?)(?:\n|$)")
+        carrier = grab(r"(?:CARRIER|SHIPPING LINE)[:.]?\s*([^\n]+)")
+        shipper = grab(r"SHIPPER(?:/EXPORTER)?[:.]?\s*([^\n]+)")
+        consignee = grab(r"CONSIGNEE[:.]?\s*([^\n]+)")
+        description = grab(r"(?:DESCRIPTION OF GOODS|CARGO DESCRIPTION|GOODS)[:.]?\s*([^\n]+)")
+        weight_raw = grab(r"GROSS WEIGHT[:.]?\s*([\d,]+(?:\.\d+)?)")
+        value_raw = grab(r"(?:DECLARED VALUE|CARGO VALUE|TOTAL VALUE)[:.]?\s*(?:INR|USD|₹)?\s*([\d,]+(?:\.\d{2})?)")
 
-        voy_match = re.search(r"(?:VOY|VOYAGE)[:.]?\s*([A-Z0-9\-]+)", text, re.IGNORECASE)
-        voyage = voy_match.group(1).strip() if voy_match else "2408W"
-
-        pol_match = re.search(r"(?:PORT OF LOADING|POL)[:.]?\s*([A-Za-z\s,]+?)(?:\n|PORT OF DISCHARGE|POD)", text, re.IGNORECASE)
-        pol = pol_match.group(1).strip() if pol_match else "Jawaharlal Nehru Port (Nhava Sheva)"
-
-        pod_match = re.search(r"(?:PORT OF DISCHARGE|POD)[:.]?\s*([A-Za-z\s,]+?)(?:\n|PLACE OF DELIVERY)", text, re.IGNORECASE)
-        pod = pod_match.group(1).strip() if pod_match else "Port of Rotterdam"
-
-        val_match = re.search(r"(?:DECLARED VALUE|CARGO VALUE|TOTAL VALUE)[:.]?\s*(?:INR|USD|₹)?\s*([\d,]+(?:\.\d{2})?)", text, re.IGNORECASE)
-        if val_match:
+        def to_decimal(raw):
             try:
-                dec_val = Decimal(val_match.group(1).replace(",", ""))
+                return Decimal(raw.replace(",", "")) if raw else None
             except Exception:
-                dec_val = Decimal("2500000.00")
-        else:
-            dec_val = Decimal("2500000.00")
+                return None
 
-        # Container extraction
-        containers = re.findall(r"\b([A-Z]{4}\d{7})\b", text)
-        if not containers:
-            containers = ["MSCU7291840", "TGHU8194021"]
+        dec_val = to_decimal(value_raw)
+        weight = to_decimal(weight_raw)
+        containers = list(dict.fromkeys(re.findall(r"\b([A-Z]{4}\d{7})\b", text)))
 
-        # Category detection
         lower_text = text.lower()
         if "reefer" in lower_text or "perishable" in lower_text or "frozen" in lower_text:
             cat = "perishable"
@@ -228,22 +226,25 @@ class DocumentAIService:
         else:
             cat = "general"
 
+        found = [bl_num, vessel, voyage, pol, pod, carrier, shipper, consignee, description, weight, dec_val, containers or None]
+        confidence = round(100.0 * sum(1 for f in found if f) / len(found), 1)
+
         result = ExtractedBillOfLading(
             bl_number=bl_num,
-            carrier_name="Mediterranean Shipping Company (MSC)",
+            carrier_name=carrier,
             vessel_name=vessel,
             voyage_number=voyage,
             port_of_loading=pol,
             port_of_discharge=pod,
-            place_of_delivery=pod,
-            shipper_name="Apex Export Logistics Pvt Ltd",
-            consignee_name="EuroMarine Distribution BV",
+            place_of_delivery=delivery,
+            shipper_name=shipper,
+            consignee_name=consignee,
             container_numbers=containers,
-            cargo_description="Containerized Export Freight as per manifest",
+            cargo_description=description,
             cargo_category=cat,
-            gross_weight_kg=48200.0,
+            gross_weight_kg=float(weight) if weight is not None else None,
             declared_value=dec_val,
-            confidence_score=94.5,
+            confidence_score=confidence,
         )
 
         # Save record

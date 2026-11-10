@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Premium Calculation & Pricing Engine
+MarineSure – Premium Calculation & Pricing Engine
 
 All calculations are strictly backend-controlled.
 Base Premium = Insured Value * Applicable Rate

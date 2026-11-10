@@ -2,12 +2,6 @@ import React, { useEffect, useState } from 'react'
 import DashboardLayout from '../../layouts/DashboardLayout'
 import api from '../../services/api'
 
-const NAV = [
-  { name: 'Dashboard', path: '/officer', icon: '📊' },
-  { name: 'Applications', path: '/officer/applications', icon: '📝' },
-  { name: 'Underwriting', path: '/officer/underwriting', icon: '🔍' },
-  { name: 'Policies', path: '/officer/policies', icon: '📜' },
-]
 
 export default function OfficerApplications() {
   const [applications, setApplications] = useState([])
@@ -56,7 +50,7 @@ export default function OfficerApplications() {
   }
 
   return (
-    <DashboardLayout title="Underwriting & Application Reviews" roleLabel="Officer" navigation={NAV}>
+    <DashboardLayout title="Underwriting & Application Reviews">
       {message && (
         <div className="p-4 mb-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           {message}

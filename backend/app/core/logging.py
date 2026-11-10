@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Logging Configuration
+MarineSure – Logging Configuration
 """
 
 import logging

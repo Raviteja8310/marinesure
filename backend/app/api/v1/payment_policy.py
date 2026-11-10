@@ -32,6 +32,29 @@ def _user(db: Session, payload: dict) -> User:
 
 # ── Payments ─────────────────────────────────────────────────────
 
+@router.get("/payments/gateway")
+def payment_gateway_status(payload: dict = Depends(get_current_user_payload)):
+    """How payments are verified on this server, so the UI never implies a real charge.
+
+    - ``test``: no gateway secret and APP_ENV=development; payments are simulated and
+      verified without a signature. No money moves.
+    - ``live``: a gateway secret is configured; a signed gateway response is required.
+    - ``unavailable``: no secret outside development; payments are refused.
+    """
+    from app.core.config import get_settings
+
+    s = get_settings()
+    configured = bool(s.RAZORPAY_KEY_SECRET) and s.RAZORPAY_KEY_SECRET != "change_me"
+    if configured:
+        mode = "live"
+    elif s.APP_ENV.lower() == "development":
+        mode = "test"
+    else:
+        mode = "unavailable"
+    return {"mode": mode, "provider": "razorpay", "key_id": s.RAZORPAY_KEY_ID if configured else None,
+            "checkout_integrated": False}
+
+
 @router.post("/payments/create-order", response_model=PaymentOrderOut, status_code=201)
 def create_payment_order(
     data: PaymentOrderCreate,

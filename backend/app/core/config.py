@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Backend Application Configuration
+MarineSure – Backend Application Configuration
 
 Loads all settings from environment variables via pydantic-settings.
 """
@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # ── AI ───────────────────────────────────────────────────────
     AI_PROVIDER: str = "gemini"
     AI_API_KEY: Optional[str] = None
+
+    # ── Business calendar ────────────────────────────────────────
+    # Offset of the business day from UTC, used when finance reports and
+    # reconciliations are filtered by calendar date. Default: IST (+05:30).
+    BUSINESS_UTC_OFFSET_MINUTES: int = 330
 
     # ── Razorpay ─────────────────────────────────────────────────
     RAZORPAY_KEY_ID: Optional[str] = None

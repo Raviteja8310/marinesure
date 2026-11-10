@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import DashboardLayout from '../../layouts/DashboardLayout'
 import api from '../../services/api'
+import { BanknotesIcon, MagnifyingGlassIcon, UserPlusIcon } from '@heroicons/react/24/outline'
+import { confirmDialog, notify } from '../../components/ui'
 
-const NAV = [
-  { name: 'Dashboard', path: '/officer', icon: '📊' },
-  { name: 'Applications', path: '/officer/applications', icon: '📝' },
-  { name: 'Underwriting', path: '/officer/underwriting', icon: '🔍' },
-  { name: 'Claims', path: '/officer/claims', icon: '⚖️' },
-]
 
 export default function OfficerClaims() {
   const [claims, setClaims] = useState([])
@@ -57,7 +53,7 @@ export default function OfficerClaims() {
       setAssignClaim(null)
       loadData()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Assignment failed')
+      notify(err.response?.data?.detail || 'Surveyor assignment failed.', 'danger')
     } finally {
       setActionLoading(false)
     }
@@ -85,21 +81,21 @@ export default function OfficerClaims() {
       setReviewClaim(null)
       loadData()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Review failed')
+      notify(err.response?.data?.detail || 'The review could not be saved.', 'danger')
     } finally {
       setActionLoading(false)
     }
   }
 
   const handleSettle = async (claimId) => {
-    if (!window.confirm('Execute claim settlement payout and issue settlement voucher?')) return
+    if (!(await confirmDialog({ title: 'Release settlement payout?', message: 'The net payable is posted to the ledger as a claim payout and the customer is notified. A failed transfer can later be marked failed and retried.', confirmLabel: 'Release payout' }))) return
     setActionLoading(true)
     try {
       await api.post(`/claims/${claimId}/settle`, {})
       setMsg(`Claim settled and payout reference generated!`)
       loadData()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Settlement failed')
+      notify(err.response?.data?.detail || 'Settlement failed.', 'danger')
     } finally {
       setActionLoading(false)
     }
@@ -108,7 +104,7 @@ export default function OfficerClaims() {
   const filteredClaims = filter === 'all' ? claims : claims.filter((c) => c.status === filter)
 
   return (
-    <DashboardLayout title="Claims & Survey Administration" roleLabel="Officer" navigation={NAV}>
+    <DashboardLayout title="Claims & Survey Administration">
       {msg && (
         <div className="p-4 mb-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           {msg}
@@ -116,7 +112,7 @@ export default function OfficerClaims() {
       )}
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-slate-800 pb-3">
+      <div className="flex flex-wrap gap-2 mb-6 border-b border-slate-800 pb-3">
         {[
           { key: 'all', label: 'All Claims' },
           { key: 'submitted', label: 'Needs Surveyor' },
@@ -138,7 +134,7 @@ export default function OfficerClaims() {
         ))}
       </div>
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-slate-400 text-xs uppercase bg-slate-950/40">
             <tr>
@@ -199,7 +195,7 @@ export default function OfficerClaims() {
                       onClick={() => setAssignClaim(c)}
                       className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded font-medium"
                     >
-                      👷 Assign Surveyor
+                      <UserPlusIcon className="h-4 w-4" aria-hidden /> Assign surveyor
                     </button>
                   )}
                   {(c.status === 'inspection_completed' || c.status === 'surveyor_assigned') && (
@@ -207,7 +203,7 @@ export default function OfficerClaims() {
                       onClick={() => openReviewModal(c)}
                       className="px-2.5 py-1 bg-marine-600 hover:bg-marine-500 text-white rounded font-medium"
                     >
-                      🔍 Review Claim
+                      <MagnifyingGlassIcon className="h-4 w-4" aria-hidden /> Review claim
                     </button>
                   )}
                   {c.status === 'approved' && (
@@ -215,7 +211,7 @@ export default function OfficerClaims() {
                       onClick={() => handleSettle(c.id)}
                       className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium"
                     >
-                      💰 Settle Payout
+                      <BanknotesIcon className="h-4 w-4" aria-hidden /> Settle payout
                     </button>
                   )}
                   {c.status === 'settled' && (

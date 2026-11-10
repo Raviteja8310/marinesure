@@ -1,293 +1,91 @@
 import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { BriefcaseIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, CubeIcon, TruckIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
+import { Alert, Button, Field, Input, Select, cx } from '../../components/ui'
+import { apiError } from '../../lib/format'
 import api from '../../services/api'
+import AuthShell from './AuthShell'
+
+// Only self-service roles. Officers and administrators are appointed by an administrator.
+const ROLES = [
+  { value: 'customer', label: 'Importer / exporter', text: 'Insure your shipments and manage claims.', icon: CubeIcon },
+  { value: 'shipping_company', label: 'Shipping company', text: 'Update milestones on assigned shipments.', icon: TruckIcon },
+  { value: 'surveyor', label: 'Marine surveyor', text: 'Inspect cargo and file survey reports.', icon: ClipboardDocumentCheckIcon },
+  { value: 'agent', label: 'Insurance agent', text: 'Assist customers and track commissions.', icon: BriefcaseIcon },
+]
 
 export default function Register() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'customer',
-    customer_type: 'importer',
-    company_name: '',
-    country: '',
-    registration_number: '',
-    agency_name: '',
-    qualification: '',
-    phone: '',
-  })
-  const [devToken, setDevToken] = useState('')
-  const [message, setMessage] = useState('')
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'customer', customer_type: 'importer', company_name: '', country: 'India', registration_number: '', agency_name: '', qualification: '', phone: '' })
+  const [done, setDone] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setMessage('')
-    setLoading(true)
+  const submit = async (e) => {
+    e.preventDefault(); setError(''); setLoading(true)
     try {
-      const res = await register(formData)
-      setMessage(res.data.message)
-      if (res.data.dev_token) {
-        setDevToken(res.data.dev_token)
-      }
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Please check your inputs.')
-    } finally {
-      setLoading(false)
-    }
+      const res = await register(form)
+      setDone({ message: res.data.message, token: res.data.dev_token })
+    } catch (err) { setError(apiError(err, 'Registration failed. Please check your details.')) } finally { setLoading(false) }
+  }
+  const verify = async () => {
+    setVerifying(true); setError('')
+    try { await api.post('/auth/verify-email', { token: done.token }); navigate('/login') } catch (err) { setError(apiError(err, 'Verification failed.')) } finally { setVerifying(false) }
   }
 
-  const handleQuickVerify = async () => {
-    try {
-      await api.post('/auth/verify-email', { token: devToken })
-      navigate('/login')
-    } catch (err) {
-      setError('Verification failed')
-    }
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-marine-950  to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-lg w-full space-y-8 bg-slate-900/90 border border-marine-800/80 p-8 rounded-2xl shadow-2xl backdrop-blur-xl">
-        <div>
-          <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-br from-marine-400 to-marine-600 flex items-center justify-center text-2xl shadow-lg shadow-marine-500/20">
-            ⚓
-          </div>
-          <h2 className="mt-4 text-center text-3xl font-extrabold text-white">
-            Create MarineSure Account
-          </h2>
-          <p className="mt-2 text-center text-sm text-slate-400">
-            Join the Marine Cargo Insurance & Claims platform
-          </p>
-        </div>
-
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        {message ? (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-6 rounded-xl text-center space-y-4">
-            <p className="font-semibold">{message}</p>
-            {devToken && (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-300">
-                  Development verification token generated:
-                </p>
-                <div className="bg-slate-950 p-3 rounded font-mono text-xs text-marine-300 break-all border border-marine-900">
-                  {devToken}
-                </div>
-                <button
-                  onClick={async () => {
-                    await api.post('/auth/verify-email', { token: devToken })
-                    navigate('/login')
-                  }}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition"
-                >
-                  Verify & Proceed to Login &rarr;
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm focus:ring-2 focus:ring-marine-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm focus:ring-2 focus:ring-marine-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                  Password (min 8 chars)
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  minLength={8}
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm focus:ring-2 focus:ring-marine-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                  Role
-                </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm focus:ring-2 focus:ring-marine-500"
-                >
-                  <option value="customer">Customer (Importer / Exporter)</option>
-                  <option value="shipping_company">Shipping Company</option>
-                  <option value="surveyor">Insurance Surveyor</option>
-                  <option value="agent">Agent / Broker</option>
-                </select>
-              </div>
-            </div>
-
-            {formData.role === 'customer' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                    Customer Type
-                  </label>
-                  <select
-                    name="customer_type"
-                    value={formData.customer_type}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm"
-                  >
-                    <option value="importer">Importer</option>
-                    <option value="exporter">Exporter</option>
-                    <option value="both">Both</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                    Country
-                  </label>
-                  <input
-                    type="text"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-            )}
-
-            {formData.role === 'shipping_company' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                    Company Name
-                  </label>
-                  <input
-                    type="text"
-                    name="company_name"
-                    required
-                    value={formData.company_name}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                    Registration Number
-                  </label>
-                  <input
-                    type="text"
-                    name="registration_number"
-                    value={formData.registration_number}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-            )}
-
-            {formData.role === 'surveyor' && (
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                  Qualifications / Certifications
-                </label>
-                <input
-                  type="text"
-                  name="qualification"
-                  placeholder="e.g. Master Mariner, IILA Diploma"
-                  value={formData.qualification}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm"
-                />
-              </div>
-            )}
-
-            {formData.role === 'agent' && (
-              <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                  Agency Name
-                </label>
-                <input
-                  type="text"
-                  name="agency_name"
-                  required
-                  value={formData.agency_name}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                Phone Number
-              </label>
-              <input
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg text-sm"
-              />
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-marine-600 hover:bg-marine-500 transition shadow-lg shadow-marine-600/30 disabled:opacity-50"
-              >
-                {loading ? 'Creating account...' : 'Register Account'}
-              </button>
-            </div>
-
-            <div className="text-center text-sm pt-2">
-              <Link to="/login" className="text-marine-400 hover:text-marine-300 font-medium">
-                Already have an account? Sign in &rarr;
-              </Link>
-            </div>
-          </form>
-        )}
-      </div>
+  if (done) return <AuthShell title="Check your email" subtitle="One more step before you can sign in.">
+    <div className="grid gap-5">
+      <Alert tone="success" title="Account created">{done.message}</Alert>
+      {error && <Alert tone="danger">{error}</Alert>}
+      {done.token ? <>
+        <p className="text-sm leading-relaxed text-navy-300">This server is running in development mode, so the verification link wasn't emailed. Verify the address here instead.</p>
+        <Button onClick={verify} loading={verifying} size="lg" icon={CheckCircleIcon}>Verify email and continue</Button>
+      </> : <Button to="/login" size="lg">Go to sign in</Button>}
     </div>
-  )
+  </AuthShell>
+
+  return <AuthShell title="Create your account" subtitle="Choose how you'll use MarineSure." wide>
+    {error && <Alert tone="danger" className="mb-5">{error}</Alert>}
+    <form onSubmit={submit} className="grid gap-6">
+      <fieldset>
+        <legend className="mb-2.5 text-sm font-medium text-navy-200">I am a…</legend>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {ROLES.map((r) => {
+            const active = form.role === r.value
+            return <label key={r.value} className={cx('flex cursor-pointer gap-3 rounded-xl border p-3.5 transition', active ? 'border-teal-500 bg-teal-400/10' : 'border-navy-700 bg-navy-950/40 hover:border-navy-600')}>
+              <input type="radio" name="role" value={r.value} checked={active} onChange={set('role')} className="sr-only" />
+              <r.icon className={cx('mt-0.5 h-5 w-5 shrink-0', active ? 'text-teal-300' : 'text-navy-400')} aria-hidden />
+              <span><span className="block text-sm font-semibold text-white">{r.label}</span><span className="mt-0.5 block text-xs text-navy-400">{r.text}</span></span>
+            </label>
+          })}
+        </div>
+      </fieldset>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Full name" required><Input required minLength={2} autoComplete="name" value={form.name} onChange={set('name')} /></Field>
+        <Field label="Email address" required><Input type="email" required autoComplete="email" value={form.email} onChange={set('email')} /></Field>
+        <Field label="Password" hint="At least 8 characters." required><Input type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={set('password')} /></Field>
+        <Field label="Phone"><Input type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></Field>
+      </div>
+
+      {form.role === 'customer' && <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Trade"><Select value={form.customer_type} onChange={set('customer_type')}><option value="importer">Importer</option><option value="exporter">Exporter</option><option value="both">Importer and exporter</option></Select></Field>
+        <Field label="Country"><Input autoComplete="country-name" value={form.country} onChange={set('country')} /></Field>
+        <Field label="Company name" className="sm:col-span-2"><Input autoComplete="organization" value={form.company_name} onChange={set('company_name')} /></Field>
+      </div>}
+      {form.role === 'shipping_company' && <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Company name" required><Input required autoComplete="organization" value={form.company_name} onChange={set('company_name')} /></Field>
+        <Field label="Registration number"><Input value={form.registration_number} onChange={set('registration_number')} /></Field>
+      </div>}
+      {form.role === 'surveyor' && <Field label="Qualifications" hint="For example: Master Mariner, IIISLA licence."><Input value={form.qualification} onChange={set('qualification')} /></Field>}
+      {form.role === 'agent' && <Field label="Agency name" required><Input required autoComplete="organization" value={form.agency_name} onChange={set('agency_name')} /></Field>}
+
+      <Button type="submit" size="lg" loading={loading} className="w-full">Create account</Button>
+      <p className="text-center text-sm text-navy-300">Already registered? <Link to="/login" className="font-semibold text-teal-300 hover:text-teal-200">Sign in</Link></p>
+    </form>
+  </AuthShell>
 }

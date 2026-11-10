@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Security Utilities
+MarineSure – Security Utilities
 
 JWT token creation/verification and Argon2 password hashing.
 """

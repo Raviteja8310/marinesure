@@ -1,9 +1,106 @@
+@import '@fontsource-variable/manrope';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+    --ms-navy: #061827;
+    --ms-teal: #10b9ae;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-800;
+    @apply bg-navy-950 text-navy-100 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1, h2, h3, h4 {
+    @apply text-white;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: rgba(16, 185, 174, 0.35);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid #54d8d0;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  input, select, textarea {
+    caret-color: #54d8d0;
+  }
+
+  input::placeholder, textarea::placeholder {
+    @apply text-navy-500;
+  }
+
+  /* Financial figures and tables line up. */
+  table, .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  /* Grid items may shrink below their content's width, so a long label can
+     never push a page wider than the screen. */
+  .grid > * {
+    min-width: 0;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #26405a transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #26405a;
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #425a70;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Nautical-chart depth contours used on hero panels and empty states. */
+  .ms-contours {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='240' viewBox='0 0 480 240' fill='none' stroke='%2354D8D0' stroke-opacity='0.09' stroke-width='1'%3E%3Cpath d='M0 40c60-20 120 20 180 0s120-20 180 0 90 20 120 10'/%3E%3Cpath d='M0 80c60-20 120 20 180 0s120-20 180 0 90 20 120 10'/%3E%3Cpath d='M0 120c60-20 120 20 180 0s120-20 180 0 90 20 120 10'/%3E%3Cpath d='M0 160c60-20 120 20 180 0s120-20 180 0 90 20 120 10'/%3E%3Cpath d='M0 200c60-20 120 20 180 0s120-20 180 0 90 20 120 10'/%3E%3C/svg%3E");
+    background-size: 480px 240px;
+  }
+
+  .ms-skeleton {
+    background: linear-gradient(90deg, #0b2438 0, #163650 40%, #0b2438 80%);
+    background-size: 800px 100%;
+    @apply animate-shimmer rounded-md;
   }
 }

@@ -66,7 +66,7 @@ def generate_policy_certificate(policy, application, shipment, product, customer
     story = []
 
     # Header
-    story.append(Paragraph("MARINESURE 2.0 INSURANCE PLATFORM", subtitle_style))
+    story.append(Paragraph("MARINESURE MARINE CARGO INSURANCE", subtitle_style))
     story.append(Paragraph("MARINE CARGO INSURANCE CERTIFICATE", title_style))
     story.append(Paragraph(f"Policy Number: <b>{policy.policy_number}</b>", subtitle_style))
     story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#0b5074'), spaceAfter=15))
@@ -138,14 +138,14 @@ def generate_policy_certificate(policy, application, shipment, product, customer
     terms_text = f"""
     <b>Applicable Clauses:</b> {product.terms_and_conditions}<br/><br/>
     <b>Premium Paid:</b> ₹ {Number_fmt(policy.premium_paid)} (Inclusive of applicable taxes and fees).<br/><br/>
-    This Certificate is issued in accordance with the authorization granted under MarineSure 2.0 system and is subject to the Institute Cargo Clauses and standard underwriting warranties. In the event of loss or damage likely to give rise to a claim under this insurance, immediate notice must be given to MarineSure claims department.
+    This Certificate is issued in accordance with the authorization granted under MarineSure system and is subject to the Institute Cargo Clauses and standard underwriting warranties. In the event of loss or damage likely to give rise to a claim under this insurance, immediate notice must be given to MarineSure claims department.
     """
     story.append(Paragraph(terms_text, body_style))
     story.append(Spacer(1, 20))
 
     # Signatures
     sig_data = [
-        [Paragraph("<b>Authorized Underwriter</b><br/>MarineSure 2.0 Underwriting Division", body_style), Paragraph("<b>Insured Acceptance</b><br/>Authorized Signatory", body_style)],
+        [Paragraph("<b>Authorized Underwriter</b><br/>MarineSure Underwriting Division", body_style), Paragraph("<b>Insured Acceptance</b><br/>Authorized Signatory", body_style)],
         [Paragraph("<br/><br/>___________________________", body_style), Paragraph("<br/><br/>___________________________", body_style)]
     ]
     t4 = Table(sig_data, colWidths=[270, 270])

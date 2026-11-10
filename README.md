@@ -1,8 +1,8 @@
-# MarineSure 2.0
+# MarineSure
 
 **Marine Insurance Policy, Shipment Protection and Claims Management System**
 
-MarineSure 2.0 is a centralized marine cargo insurance management platform that digitizes policy applications, real-time shipment tracking, premium calculation, damage inspection, and end-to-end claim settlement.
+MarineSure is a centralized marine cargo insurance management platform that digitizes policy applications, real-time shipment tracking, premium calculation, damage inspection, and end-to-end claim settlement.
 
 ## Tech Stack
 - **Frontend:** React 18, Tailwind CSS, Vite, Chart.js

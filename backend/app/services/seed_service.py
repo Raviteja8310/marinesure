@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Comprehensive Demo Environment & Master Data Seeder.
+MarineSure – Comprehensive Demo Environment & Master Data Seeder.
 
 Seeds realistic accounts, profiles, shipments, products, policies, claims,
 surveyor reports, IoT telemetry, and broker commissions for interactive demos.
@@ -51,6 +51,24 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+
+def _refresh_demo_identity(db: Session, user: User, spec: Dict[str, Any]) -> None:
+    """Keep an already-seeded demo account's display name and company in sync with the spec."""
+    changed = False
+    if user.name != spec["name"]:
+        user.name = spec["name"]
+        changed = True
+    profile = {
+        "customer": user.customer_profile, "shipping": user.shipping_profile,
+        "agent": user.agent_profile,
+    }.get(spec["profile_type"])
+    for key in ("company_name", "agency_name"):
+        if profile is not None and key in spec["profile"] and getattr(profile, key, None) != spec["profile"][key]:
+            setattr(profile, key, spec["profile"][key])
+            changed = True
+    if changed:
+        db.commit()
+
 def seed_demo_environment(db: Session) -> Dict[str, Any]:
     """Execute end-to-end idempotent seeding of all platform roles and domain entities."""
     # 1. Base roles and products
@@ -63,24 +81,24 @@ def seed_demo_environment(db: Session) -> Dict[str, Any]:
     # 2. Demo Users for all 6 personas
     demo_users_spec = [
         {
-            "name": "Reliance Global Impex",
+            "name": "Priya Sharma",
             "email": "customer@marinesure.com",
             "roles": ["customer"],
             "profile_type": "customer",
             "profile": {
-                "company_name": "Reliance Global Impex Ltd",
+                "company_name": "Sharma Agro Exports Pvt Ltd",
                 "customer_type": "corporate",
                 "phone": "+91 98200 11223",
                 "country": "India",
             },
         },
         {
-            "name": "Maersk Line Logistics",
+            "name": "Arjun Nair",
             "email": "carrier@marinesure.com",
             "roles": ["shipping_company"],
             "profile_type": "shipping",
             "profile": {
-                "company_name": "A.P. Moller - Maersk Ocean Freight",
+                "company_name": "Konkan Coastal Shipping Pvt Ltd",
                 "registration_number": "IMO-LINE-910284",
                 "phone": "+45 33 63 33 63",
             },
@@ -97,12 +115,12 @@ def seed_demo_environment(db: Session) -> Dict[str, Any]:
             },
         },
         {
-            "name": "Apex Marine Insurance Brokers",
+            "name": "Ananya Iyer",
             "email": "agent@marinesure.com",
             "roles": ["agent"],
             "profile_type": "agent",
             "profile": {
-                "agency_name": "Apex Maritime Risk & Insurance Intermediaries",
+                "agency_name": "Iyer Marine Insurance Advisors",
                 "license_number": "IRDA-AG-991204",
                 "phone": "+91 22 6677 8899",
             },
@@ -119,7 +137,7 @@ def seed_demo_environment(db: Session) -> Dict[str, Any]:
             },
         },
         {
-            "name": "Eleanor Vance (Admin)",
+            "name": "Raviteja",
             "email": "admin@marinesure.com",
             "roles": ["admin"],
             "profile_type": "officer",
@@ -163,6 +181,8 @@ def seed_demo_environment(db: Session) -> Dict[str, Any]:
             db.add(user)
             db.commit()
             db.refresh(user)
+        else:
+            _refresh_demo_identity(db, user, spec)
         created_users[spec["email"]] = user
 
     cust = created_users["customer@marinesure.com"]
@@ -217,7 +237,7 @@ def seed_demo_environment(db: Session) -> Dict[str, Any]:
                 location="Nhava Sheva Terminal 3",
                 event_time=_now() - timedelta(days=12),
                 recorded_by=carrier.id,
-                remarks="Loaded aboard MV Maersk Mc-Kinney Moller",
+                remarks="Loaded aboard MV Konkan Pride",
             )
         )
         s1.milestones.append(

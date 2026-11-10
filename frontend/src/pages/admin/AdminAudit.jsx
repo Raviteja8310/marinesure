@@ -2,13 +2,6 @@ import React, { useEffect, useState } from 'react'
 import DashboardLayout from '../../layouts/DashboardLayout'
 import api from '../../services/api'
 
-const NAV = [
-  { name: 'Dashboard', path: '/admin', icon: '📊' },
-  { name: 'Insurance Products', path: '/customer/products', icon: '📋' },
-  { name: 'Underwriting', path: '/officer', icon: '🔍' },
-  { name: 'Claims Oversight', path: '/officer/claims', icon: '⚖️' },
-  { name: 'Audit Logs', path: '/admin/audit', icon: '📝' },
-]
 
 export default function AdminAudit() {
   const [logs, setLogs] = useState([])
@@ -27,7 +20,7 @@ export default function AdminAudit() {
     : logs.filter((l) => l.action.toLowerCase().includes(filterAction.toLowerCase()))
 
   return (
-    <DashboardLayout title="System Compliance & Audit Trail" roleLabel="Administrator" navigation={NAV}>
+    <DashboardLayout title="System Compliance & Audit Trail">
       <div className="flex justify-between items-center mb-6">
         <div>
           <p className="text-sm text-slate-400">
@@ -50,7 +43,7 @@ export default function AdminAudit() {
         </div>
       </div>
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="text-slate-400 uppercase bg-slate-950/40">
             <tr>

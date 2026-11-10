@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import DashboardLayout from '../../layouts/DashboardLayout'
 import api from '../../services/api'
+import { SignalIcon } from '@heroicons/react/24/outline'
 
-const NAV = [
-  { name: 'Dashboard', path: '/shipping', icon: '📊' },
-  { name: 'Assigned Shipments', path: '/shipping/shipments', icon: '🚢' },
-  { name: 'IoT Telemetry & Tracking', path: '/shipping/tracking', icon: '📡' },
-]
 
 const NEXT = [
   'documents_submitted',
@@ -96,7 +92,7 @@ export default function Tracking() {
         location_name: location || selected.destination_location,
       })
       if (res.data.is_anomaly) {
-        setMessage(`⚠️ Sensor anomaly recorded! Casualty incident automatically filed.`)
+        setMessage('Sensor reading is outside safe limits. An incident was filed automatically.')
       } else {
         setMessage(`IoT sensor telemetry point ingested successfully.`)
       }
@@ -109,7 +105,7 @@ export default function Tracking() {
   }
 
   return (
-    <DashboardLayout title="Shipment Tracking & IoT Telemetry" roleLabel="Carrier / Logistics" navigation={NAV}>
+    <DashboardLayout title="Shipment Tracking & IoT Telemetry">
       {error && <p className="text-red-400 text-sm mb-4">{String(error)}</p>}
       {message && <p className="text-emerald-400 text-sm mb-4">{message}</p>}
 
@@ -124,7 +120,7 @@ export default function Tracking() {
               key={s.id}
               onClick={() => setSelected(s)}
               className={`w-full text-left px-4 py-3 border-b border-slate-800 text-sm transition ${
-                selected?.id === s.id ? 'bg-marine-600/20 border-l-4 border-l-marine-500' : 'hover:bg-slate-800/40'
+                selected?.id === s.id ? 'bg-teal-400/10 text-white ring-1 ring-inset ring-teal-500/40' : 'hover:bg-slate-800/40'
               }`}
             >
               <div className="flex justify-between items-center">
@@ -188,7 +184,7 @@ export default function Tracking() {
             {/* Simulated IoT Sensor Injection Box */}
             <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
               <h4 className="text-xs font-bold uppercase text-slate-300 mb-3 flex items-center gap-2">
-                <span>📡</span> Transmit IoT Sensor Telemetry Stream
+                <SignalIcon className="h-4 w-4" aria-hidden /> Record a container sensor reading
               </h4>
               <form onSubmit={handleSimulateTelemetry} className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                 <div>

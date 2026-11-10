@@ -1,142 +1,119 @@
 import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '../../context/AuthContext'
+import { homeFor } from '../../routes/ProtectedRoute'
+import { Alert, Button, Field, Input, Modal } from '../../components/ui'
+import { apiError } from '../../lib/format'
+import api from '../../services/api'
+import AuthShell from './AuthShell'
 
-const DEMO_ROLES = [
-  { label: 'Customer', icon: '🚢', email: 'customer@marinesure.com' },
-  { label: 'Carrier', icon: '⚓', email: 'carrier@marinesure.com' },
-  { label: 'Surveyor', icon: '🔍', email: 'surveyor@marinesure.com' },
-  { label: 'Broker Agent', icon: '🤝', email: 'agent@marinesure.com' },
-  { label: 'Underwriter', icon: '🛡️', email: 'officer@marinesure.com' },
-  { label: 'Admin', icon: '⚙️', email: 'admin@marinesure.com' },
+// Seeded demo accounts (see backend seed_service); development convenience only.
+const DEMO = [
+  ['Customer', 'customer@marinesure.com'],
+  ['Shipping', 'carrier@marinesure.com'],
+  ['Surveyor', 'surveyor@marinesure.com'],
+  ['Agent', 'agent@marinesure.com'],
+  ['Officer', 'officer@marinesure.com'],
+  ['Admin', 'admin@marinesure.com'],
 ]
+const DEMO_PASSWORD = 'MarineSure@2026'
+
+function ForgotPassword({ open, onClose }) {
+  const [email, setEmail] = useState('')
+  const [token, setToken] = useState('')
+  const [password, setPassword] = useState('')
+  const [stage, setStage] = useState('request')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState({ tone: '', text: '' })
+  const reset = () => { setStage('request'); setToken(''); setPassword(''); setMsg({ tone: '', text: '' }); onClose() }
+  const request = async (e) => {
+    e.preventDefault(); setBusy(true); setMsg({ tone: '', text: '' })
+    try {
+      const { data } = await api.post('/auth/forgot-password', { email })
+      if (data.dev_token) setToken(data.dev_token)
+      setStage('reset')
+      setMsg({ tone: 'info', text: data.dev_token ? 'Development mode: the reset code has been filled in for you. In production it is emailed.' : data.message })
+    } catch (err) { setMsg({ tone: 'danger', text: apiError(err) }) } finally { setBusy(false) }
+  }
+  const submit = async (e) => {
+    e.preventDefault(); setBusy(true); setMsg({ tone: '', text: '' })
+    try {
+      await api.post('/auth/reset-password', { token, new_password: password })
+      setStage('done'); setMsg({ tone: 'success', text: 'Password updated. You can sign in with your new password.' })
+    } catch (err) { setMsg({ tone: 'danger', text: apiError(err) }) } finally { setBusy(false) }
+  }
+  return <Modal open={open} onClose={reset} title="Reset your password" description="We'll send a reset code to the email on your account.">
+    {msg.text && <Alert tone={msg.tone} className="mb-4">{msg.text}</Alert>}
+    {stage === 'request' && <form onSubmit={request} className="grid gap-4">
+      <Field label="Email address" required><Input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+      <Button type="submit" loading={busy}>Send reset code</Button>
+    </form>}
+    {stage === 'reset' && <form onSubmit={submit} className="grid gap-4">
+      <Field label="Reset code" required><Input required minLength={10} value={token} onChange={(e) => setToken(e.target.value)} /></Field>
+      <Field label="New password" hint="At least 8 characters." required><Input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+      <Button type="submit" loading={busy}>Update password</Button>
+    </form>}
+    {stage === 'done' && <Button onClick={reset} className="w-full">Back to sign in</Button>}
+  </Modal>
+}
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [show, setShow] = useState(false)
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState('')
+  const [forgot, setForgot] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const handleLoginWith = async (targetEmail, targetPassword = 'MarineSure@2026') => {
-    setError('')
-    setLoading(true)
-    setEmail(targetEmail)
-    setPassword(targetPassword)
+  const signIn = async (targetEmail, targetPassword, key = 'form') => {
+    setError(''); setLoading(key)
     try {
       const user = await login(targetEmail, targetPassword)
-      const roles = user.roles || []
-      if (roles.includes('admin')) navigate('/admin')
-      else if (roles.includes('insurance_officer') || roles.includes('senior_officer')) navigate('/officer')
-      else if (roles.includes('surveyor')) navigate('/surveyor')
-      else if (roles.includes('shipping_company')) navigate('/shipping')
-      else if (roles.includes('agent')) navigate('/agent')
-      else navigate('/customer')
+      navigate(homeFor(user.roles || []))
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid email or password. Verify your email if newly registered.')
-    } finally {
-      setLoading(false)
-    }
+      setError(err.response?.status === 401 || err.response?.status === 403
+        ? apiError(err, 'Email or password is incorrect.')
+        : apiError(err, 'Sign-in failed. Please try again.'))
+    } finally { setLoading('') }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    handleLoginWith(email, password)
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-marine-950 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-6 bg-slate-900/90 border border-marine-800/80 p-8 rounded-2xl shadow-2xl backdrop-blur-xl">
-        <div>
-          <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-br from-marine-400 to-marine-600 flex items-center justify-center text-2xl shadow-lg shadow-marine-500/20">
-            ⚓
-          </div>
-          <h2 className="mt-4 text-center text-3xl font-extrabold text-white">
-            Sign in to MarineSure
-          </h2>
-          <p className="mt-2 text-center text-sm text-slate-400">
-            Marine Cargo Insurance & Claims Platform
-          </p>
+  return <AuthShell title="Sign in to MarineSure" subtitle="Welcome back. Pick up where your shipments left off.">
+    {error && <Alert tone="danger" className="mb-5">{error}</Alert>}
+    <form onSubmit={(e) => { e.preventDefault(); signIn(email, password) }} className="grid gap-4" noValidate={false}>
+      <Field label="Email address" required>
+        <Input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+      </Field>
+      <div className="grid gap-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="login-password" className="text-sm font-medium text-navy-200">Password <span className="text-teal-300">*</span></label>
+          <button type="button" onClick={() => setForgot(true)} className="text-xs font-semibold text-teal-300 hover:text-teal-200">Forgot password?</button>
         </div>
-
-        {/* 1-Click Demo Persona Switcher */}
-        <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2 text-center tracking-wider">
-            ⚡ Quick Demo Access (1-Click Login)
-          </span>
-          <div className="grid grid-cols-3 gap-2">
-            {DEMO_ROLES.map((r) => (
-              <button
-                key={r.label}
-                type="button"
-                onClick={() => handleLoginWith(r.email)}
-                disabled={loading}
-                className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-marine-700/40 border border-slate-800 hover:border-marine-500 text-xs text-slate-300 hover:text-white transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-50"
-              >
-                <span className="text-sm">{r.icon}</span>
-                <span className="font-semibold text-[11px] truncate w-full text-center">{r.label}</span>
-              </button>
-            ))}
-          </div>
+        <div className="relative">
+          <Input id="login-password" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="pr-11" />
+          <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-navy-400 hover:text-white">
+            {show ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+          </button>
         </div>
+      </div>
+      <Button type="submit" size="lg" loading={loading === 'form'} disabled={!!loading} className="mt-1 w-full">Sign in</Button>
+    </form>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+    <p className="mt-6 text-center text-sm text-navy-300">New to MarineSure? <Link to="/register" className="font-semibold text-teal-300 hover:text-teal-200">Create an account</Link></p>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 sm:text-sm"
-                placeholder="you@domain.com"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-slate-700 bg-slate-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-marine-500 focus:border-marine-500 sm:text-sm"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-marine-600 hover:bg-marine-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-marine-500 transition shadow-lg shadow-marine-600/30 disabled:opacity-50"
-            >
-              {loading ? 'Authenticating...' : 'Sign In'}
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-1">
-            <Link to="/register" className="text-marine-400 hover:text-marine-300 font-medium">
-              Create an account &rarr;
-            </Link>
-            <Link to="/" className="text-slate-400 hover:text-slate-300">
-              &larr; Home
-            </Link>
-          </div>
-        </form>
+    <div className="mt-7 border-t border-white/10 pt-5">
+      <p className="text-xs font-medium text-navy-400">Demo accounts (development data)</p>
+      <div className="mt-2.5 grid grid-cols-3 gap-2">
+        {DEMO.map(([label, demoEmail]) => <button key={label} type="button" disabled={!!loading}
+          onClick={() => { setEmail(demoEmail); setPassword(DEMO_PASSWORD); signIn(demoEmail, DEMO_PASSWORD, label) }}
+          className="rounded-lg border border-navy-700 bg-navy-950/50 px-2 py-2 text-xs font-semibold text-navy-200 transition hover:border-teal-500/60 hover:text-white disabled:opacity-50">
+          {loading === label ? 'Signing in…' : label}
+        </button>)}
       </div>
     </div>
-  )
+    <ForgotPassword open={forgot} onClose={() => setForgot(false)} />
+  </AuthShell>
 }

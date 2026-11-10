@@ -137,7 +137,7 @@ def _now() -> datetime:
 
 
 def seed_insurance_products(db: Session) -> None:
-    """Populate database with the 7 canonical MarineSure 2.0 products."""
+    """Populate database with the 7 canonical MarineSure products."""
     existing_codes = {p.product_code for p in db.query(InsuranceProduct.product_code).all()}
     for data in CANONICAL_PRODUCTS:
         if data["product_code"] not in existing_codes:

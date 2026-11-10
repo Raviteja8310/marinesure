@@ -158,8 +158,16 @@ def get_entry(db: Session, entry_id: str) -> LedgerEntry:
 
 
 def _day_range(date_from: Optional[date], date_to: Optional[date]):
-    start = datetime.combine(date_from, time.min) if date_from else None
-    end = datetime.combine(date_to + timedelta(days=1), time.min) if date_to else None
+    """Convert calendar dates in the business timezone to naive-UTC bounds.
+
+    Ledger timestamps are stored in UTC. A user filtering "7 Nov" means 7 Nov
+    in their business day (IST by default), which starts at 18:30 UTC on 6 Nov.
+    """
+    from app.core.config import get_settings
+
+    offset = timedelta(minutes=get_settings().BUSINESS_UTC_OFFSET_MINUTES)
+    start = datetime.combine(date_from, time.min) - offset if date_from else None
+    end = datetime.combine(date_to + timedelta(days=1), time.min) - offset if date_to else None
     return start, end
 
 

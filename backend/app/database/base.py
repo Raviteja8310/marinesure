@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Database Base Model & Common Mixins
+MarineSure – Database Base Model & Common Mixins
 """
 
 from datetime import datetime, timezone

@@ -21,6 +21,13 @@ API = "/api/v1"
 
 # ── helpers ─────────────────────────────────────────────────────
 
+def business_today() -> str:
+    """Today's date in the business timezone, as the finance API interprets dates."""
+    from app.core.config import get_settings
+
+    return (datetime.now(timezone.utc) + timedelta(minutes=get_settings().BUSINESS_UTC_OFFSET_MINUTES)).date().isoformat()
+
+
 def _setup_active_policy(client, email):
     """Legacy helper grants the customer the admin role to approve the application.
 
@@ -384,7 +391,7 @@ def test_gateway_reconciliation_matches_and_flags_discrepancies(client):
     _setup_active_policy(client, "recon@example.com")
     _, admin = _make_user("recon.admin@example.com", "admin")
     premium = client.get(f"{API}/finance/ledger?entry_type=premium_received", headers=_auth(admin)).json()[0]
-    today = date.today().isoformat()
+    today = business_today()
 
     ok = client.post(f"{API}/finance/reconciliations", json={
         "source": "payment_gateway", "period_start": today, "period_end": today,
@@ -416,7 +423,7 @@ def test_bank_payout_reconciliation_marks_settlement_reconciled(client):
     ctx = _settled_claim(client, "bankrecon.flow@example.com")
     _approve_and_settle(client, ctx, reference="UTR-BANK-77")
     _, senior = _make_user("bankrecon.senior@example.com", "senior_officer")
-    today = date.today().isoformat()
+    today = business_today()
     run = client.post(f"{API}/finance/reconciliations", json={
         "source": "bank_payouts", "period_start": today, "period_end": today,
         "lines": [{"reference": "UTR-BANK-77", "amount": "171000.00"}]}, headers=_auth(senior))
@@ -706,7 +713,7 @@ def test_reconciliation_flags_duplicate_refs_and_nonzero_difference(client):
         db.commit()
     finally:
         db.close()
-    today = date.today().isoformat()
+    today = business_today()
     run = client.post(f"{API}/finance/reconciliations", json={
         "source": "payment_gateway", "period_start": today, "period_end": today,
         "lines": [{"reference": "pay_dup_2", "amount": "200.00"}]}, headers=_auth(admin)).json()

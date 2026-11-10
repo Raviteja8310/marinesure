@@ -2,15 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import DashboardLayout from '../../layouts/DashboardLayout'
 import api from '../../services/api'
+import { DocumentArrowDownIcon } from '@heroicons/react/24/outline'
+import { notify } from '../../components/ui'
 
-const NAV = [
-  { name: 'Dashboard', path: '/customer', icon: '📊' },
-  { name: 'My Shipments', path: '/customer/shipments', icon: '🚢' },
-  { name: 'Insurance Products', path: '/customer/products', icon: '📋' },
-  { name: 'My Applications', path: '/customer/applications', icon: '📝' },
-  { name: 'My Policies', path: '/customer/policies', icon: '📜' },
-  { name: 'Payments', path: '/customer/payments', icon: '💳' },
-]
 
 export default function PoliciesList() {
   const [policies, setPolicies] = useState([])
@@ -91,12 +85,12 @@ export default function PoliciesList() {
       link.click()
       link.remove()
     } catch (err) {
-      alert('Could not download PDF certificate')
+      notify('The PDF certificate could not be downloaded.', 'danger')
     }
   }
 
   return (
-    <DashboardLayout title="Active Policies & Certificates" roleLabel="Customer" navigation={NAV}>
+    <DashboardLayout title="Active Policies & Certificates">
       {actionMsg && (
         <div className="p-4 mb-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           {actionMsg}
@@ -177,7 +171,7 @@ export default function PoliciesList() {
                   onClick={() => downloadCert(selectedPolicy.id, selectedPolicy.policy_number)}
                   className="px-4 py-2 bg-marine-600 hover:bg-marine-500 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-lg shadow-marine-600/20"
                 >
-                  <span>📄</span> Download Certificate (PDF)
+                  <DocumentArrowDownIcon className="h-4 w-4" aria-hidden /> Download certificate (PDF)
                 </button>
               </div>
 

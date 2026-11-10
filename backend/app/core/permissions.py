@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Permission & RBAC Utilities
+MarineSure – Permission & RBAC Utilities
 
 Role-based access control decorators and dependency injectors.
 """

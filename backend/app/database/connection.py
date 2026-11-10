@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Database Connection & Session Management
+MarineSure – Database Connection & Session Management
 """
 
 from typing import Generator

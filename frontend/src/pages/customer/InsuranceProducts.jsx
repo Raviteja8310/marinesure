@@ -2,13 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import DashboardLayout from '../../layouts/DashboardLayout'
 import api from '../../services/api'
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 
-const NAV = [
-  { name: 'Dashboard', path: '/customer', icon: '📊' },
-  { name: 'My Shipments', path: '/customer/shipments', icon: '🚢' },
-  { name: 'Insurance Products', path: '/customer/products', icon: '📋' },
-  { name: 'My Applications', path: '/customer/applications', icon: '📝' },
-]
 
 export default function InsuranceProducts() {
   const [products, setProducts] = useState([])
@@ -25,7 +20,7 @@ export default function InsuranceProducts() {
   }, [])
 
   return (
-    <DashboardLayout title="Marine Insurance Products" roleLabel="Customer" navigation={NAV}>
+    <DashboardLayout title="Marine Insurance Products">
       {loading ? (
         <div className="text-slate-400">Loading products catalog...</div>
       ) : (
@@ -110,7 +105,7 @@ export default function InsuranceProducts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                    <span>✓</span> Covered Perils
+                    <CheckCircleIcon className="h-4 w-4 text-emerald-300" aria-hidden /> Covered perils
                   </h4>
                   <ul className="space-y-2 text-xs text-slate-300">
                     {selected.coverages?.map((c, i) => (
@@ -124,7 +119,7 @@ export default function InsuranceProducts() {
 
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-                    <span>✕</span> Policy Exclusions
+                    <XCircleIcon className="h-4 w-4 text-rose-300" aria-hidden /> Policy exclusions
                   </h4>
                   <ul className="space-y-2 text-xs text-slate-300">
                     {selected.exclusions?.map((e, i) => (

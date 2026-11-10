@@ -1,5 +1,5 @@
 """
-CLI entrypoint to seed realistic MarineSure 2.0 demo data.
+CLI entrypoint to seed realistic MarineSure demo data.
 """
 
 from app.database.connection import SessionLocal
@@ -7,7 +7,7 @@ from app.services.seed_service import seed_demo_environment
 
 
 def main():
-    print("🌊 Seeding MarineSure 2.0 Demo Environment...")
+    print("🌊 Seeding MarineSure Demo Environment...")
     db = SessionLocal()
     try:
         res = seed_demo_environment(db)

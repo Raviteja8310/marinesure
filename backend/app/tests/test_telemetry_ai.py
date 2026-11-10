@@ -167,8 +167,17 @@ def test_bill_of_lading_document_ai_extraction(client):
     assert ext["bl_number"] == "BL-MAEU3948102"
     assert "SOVEREIGN MAERSK" in ext["vessel_name"]
     assert ext["cargo_category"] == "electronics"
-    assert ext["confidence_score"] > 90.0
+    assert 0 < ext["confidence_score"] <= 100
     assert "MSKU2819374" in ext["container_numbers"]
+
+    # Text without B/L content must not produce invented ports, vessels or containers.
+    empty = client.post(
+        "/api/v1/ai/parse-bill-of-lading",
+        json={"document_text": "Please find attached our quotation for next month.", "document_name": "note.txt"},
+        headers=_auth(token),
+    ).json()
+    assert empty["port_of_loading"] is None and empty["vessel_name"] is None
+    assert empty["container_numbers"] == [] and empty["confidence_score"] == 0
 
 
 def test_computer_vision_damage_classifier(client):

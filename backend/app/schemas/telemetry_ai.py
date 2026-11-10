@@ -61,19 +61,20 @@ class DocumentParseRequest(BaseModel):
 
 
 class ExtractedBillOfLading(BaseModel):
-    bl_number: str
-    carrier_name: str
-    vessel_name: str
-    voyage_number: str
-    port_of_loading: str
-    port_of_discharge: str
-    place_of_delivery: Optional[str]
-    shipper_name: str
-    consignee_name: str
-    container_numbers: List[str]
-    cargo_description: str
+    """Fields found in the B/L text. Missing fields are None, never guessed."""
+    bl_number: Optional[str] = None
+    carrier_name: Optional[str] = None
+    vessel_name: Optional[str] = None
+    voyage_number: Optional[str] = None
+    port_of_loading: Optional[str] = None
+    port_of_discharge: Optional[str] = None
+    place_of_delivery: Optional[str] = None
+    shipper_name: Optional[str] = None
+    consignee_name: Optional[str] = None
+    container_numbers: List[str] = []
+    cargo_description: Optional[str] = None
     cargo_category: str
-    gross_weight_kg: float
+    gross_weight_kg: Optional[float] = None
     declared_value: Optional[Decimal]
     confidence_score: float
 

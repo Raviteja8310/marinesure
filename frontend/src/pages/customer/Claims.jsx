@@ -2,15 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import DashboardLayout from '../../layouts/DashboardLayout'
 import api from '../../services/api'
+import { CheckIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { notify } from '../../components/ui'
 
-const NAV = [
-  { name: 'Dashboard', path: '/customer', icon: '📊' },
-  { name: 'Shipments', path: '/customer/shipments', icon: '🚢' },
-  { name: 'Products', path: '/customer/products', icon: '🛡️' },
-  { name: 'Applications', path: '/customer/applications', icon: '📝' },
-  { name: 'Policies', path: '/customer/policies', icon: '📜' },
-  { name: 'Claims', path: '/customer/claims', icon: '⚖️' },
-]
 
 const STATUS_STEPS = [
   { key: 'submitted', label: 'Submitted' },
@@ -69,7 +63,7 @@ export default function CustomerClaims() {
     try {
       const selPol = policies.find((p) => p.id === formData.policy_id)
       if (!selPol) {
-        alert('Please select an active policy')
+        notify('Select an active policy first.', 'warning')
         setSubmitting(false)
         return
       }
@@ -99,7 +93,7 @@ export default function CustomerClaims() {
       setShowModal(false)
       loadData()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to file claim')
+      notify(err.response?.data?.detail || 'The claim could not be filed.', 'danger')
     } finally {
       setSubmitting(false)
     }
@@ -112,7 +106,7 @@ export default function CustomerClaims() {
   }
 
   return (
-    <DashboardLayout title="Claims Management" roleLabel="Customer" navigation={NAV}>
+    <DashboardLayout title="Claims Management">
       {msg && (
         <div className="p-4 mb-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           {msg}
@@ -129,11 +123,11 @@ export default function CustomerClaims() {
           onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-marine-600 hover:bg-marine-500 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2"
         >
-          <span>⚖️</span> Report Incident & File Claim
+          <ExclamationTriangleIcon className="h-4 w-4" aria-hidden /> Report incident & file claim
         </button>
       </div>
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-slate-400 text-xs uppercase bg-slate-950/40">
             <tr>
@@ -224,7 +218,7 @@ export default function CustomerClaims() {
                 onClick={() => setSelectedClaim(null)}
                 className="text-slate-400 hover:text-white"
               >
-                ✕
+                <XMarkIcon className="h-5 w-5" aria-hidden />
               </button>
             </div>
 
@@ -248,7 +242,7 @@ export default function CustomerClaims() {
                               : 'bg-slate-800 text-slate-400'
                           }`}
                         >
-                          {isDone ? '✓' : idx + 1}
+                          {isDone ? <CheckIcon className="h-4 w-4" aria-hidden /> : idx + 1}
                         </div>
                         <span className="text-[10px] mt-1 text-slate-400 text-center font-medium">
                           {s.label}

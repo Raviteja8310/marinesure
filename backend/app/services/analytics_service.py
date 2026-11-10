@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Portfolio Analytics, Loss Ratio, and Actuarial Financial Service.
+MarineSure – Portfolio Analytics, Loss Ratio, and Actuarial Financial Service.
 """
 
 from decimal import Decimal
@@ -205,25 +205,42 @@ class AnalyticsService:
         }
 
     @classmethod
-    def get_monthly_trends(cls, db: Session) -> Dict[str, Any]:
-        """Aggregate monthly trajectory of GWP and Claims."""
-        # Simulated or actual aggregated periods
-        all_policies = db.query(Policy).order_by(Policy.created_at.asc()).all()
-        all_claims = db.query(Claim).filter(Claim.status == "settled").order_by(Claim.created_at.asc()).all()
+    def get_monthly_trends(cls, db: Session, months: int = 6) -> Dict[str, Any]:
+        """Premium written vs. claims settled per calendar month, from real records.
+
+        Premium is grouped by policy issue date; claims by settlement date. Months
+        with no activity are reported as zero rather than omitted.
+        """
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        keys = []
+        y, m = now.year, now.month
+        for _ in range(months):
+            keys.append((y, m))
+            y, m = (y - 1, 12) if m == 1 else (y, m - 1)
+        keys.reverse()
+        buckets = {k: {"gwp": Decimal("0"), "claims": Decimal("0"), "policies": 0, "settled_claims": 0} for k in keys}
+
+        for p in db.query(Policy).all():
+            k = (p.created_at.year, p.created_at.month) if p.created_at else None
+            if k in buckets:
+                buckets[k]["gwp"] += p.premium_paid or Decimal("0")
+                buckets[k]["policies"] += 1
+        for c in db.query(Claim).filter(Claim.status == "settled", Claim.settled_at.isnot(None)).all():
+            k = (c.settled_at.year, c.settled_at.month)
+            if k in buckets:
+                buckets[k]["claims"] += c.net_payable or Decimal("0")
+                buckets[k]["settled_claims"] += 1
 
         months_data = [
-            {"month": "May 2026", "gwp": 1250000, "claims": 310000},
-            {"month": "Jun 2026", "gwp": 1820000, "claims": 520000},
-            {"month": "Jul 2026", "gwp": 2400000, "claims": 780000},
-            {"month": "Aug 2026", "gwp": 3100000, "claims": 950000},
-            {"month": "Sep 2026", "gwp": 4200000, "claims": 1400000},
-            {"month": "Oct 2026", "gwp": 5800000, "claims": 1900000},
+            {
+                "month": datetime(k[0], k[1], 1).strftime("%b %Y") + (" (MTD)" if k == (now.year, now.month) else ""),
+                "gwp": float(v["gwp"]),
+                "claims": float(v["claims"]),
+                "policies_issued": v["policies"],
+                "claims_settled": v["settled_claims"],
+            }
+            for k, v in buckets.items()
         ]
-
-        # Add live data to current month if policies exist
-        if all_policies:
-            live_gwp = float(sum((p.premium_paid for p in all_policies), Decimal("0")))
-            live_claims = float(sum((c.net_payable or Decimal("0") for c in all_claims), Decimal("0")))
-            months_data.append({"month": "Nov 2026 (MTD)", "gwp": live_gwp, "claims": live_claims})
-
-        return {"monthly_financial_history": months_data}
+        return {"monthly_financial_history": months_data, "source": "policies and settled claims"}

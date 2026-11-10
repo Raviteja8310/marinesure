@@ -1,5 +1,5 @@
 """
-MarineSure 2.0 – Algorithmic Marine Underwriting Risk Assessment Engine.
+MarineSure – Algorithmic Marine Underwriting Risk Assessment Engine.
 
 Computes multi-factorial marine transit risk scores (0-100), risk tiers
 (LOW, MODERATE, HIGH, CRITICAL), and recommends underwriting clauses,

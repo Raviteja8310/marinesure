@@ -1,38 +1,22 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import api from '../../services/api'
-import { DataTable, ErrorNotice, Shell } from './OperationalPages'
+import { ErrorNotice, Shell } from './OperationalPages'
+import { Alert, Button, Card, DataTable, EmptyState, Field, Input, Select, StatusBadge, TextArea, useDialog } from '../../components/ui'
+import { apiError, dateTime, inr as inrFmt } from '../../lib/format'
+import { PaperClipIcon } from '@heroicons/react/24/outline'
 
 // ── Small UI primitives ──────────────────────────────────────────
 
-const inr = (v) => (v === null || v === undefined || v === '' ? '—' : `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-const when = (v) => (v ? new Date(v.endsWith?.('Z') || v.includes?.('+') ? v : `${v}Z`).toLocaleString() : '—')
-const errText = (e, fallback) => {
-  const d = e?.response?.data?.detail
-  if (Array.isArray(d)) return d.map((x) => `${(x.loc || []).slice(-1)[0]}: ${x.msg}`).join('; ')
-  return d || fallback
-}
-
-const PILL = {
-  paid: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', matched: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  active: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', resolved: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  completed: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', scheduled: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
-  open: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30', in_progress: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-  created: 'bg-amber-500/15 text-amber-300 border-amber-500/30', inactive: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
-  closed: 'bg-slate-500/15 text-slate-300 border-slate-500/30', cancelled: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
-  failed: 'bg-rose-500/15 text-rose-300 border-rose-500/30', mismatched: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-  rejected: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-}
-export const Pill = ({ value }) => <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${PILL[value] || 'border-slate-600 text-slate-300'}`}>{String(value || '—').replaceAll('_', ' ')}</span>
-const Card = ({ title, actions, children, className = '' }) => <section className={`rounded-xl border border-slate-800 bg-slate-900/70 p-5 ${className}`}>{(title || actions) && <div className="mb-4 flex flex-wrap items-center justify-between gap-2">{title && <h2 className="text-base font-semibold text-white">{title}</h2>}<div className="flex gap-2">{actions}</div></div>}{children}</section>
-const Btn = ({ kind = 'primary', className = '', ...p }) => <button {...p} className={`rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${kind === 'primary' ? 'bg-cyan-700 text-white hover:bg-cyan-600' : kind === 'danger' ? 'border border-rose-700 text-rose-300 hover:bg-rose-900/30' : 'border border-slate-700 text-slate-200 hover:bg-slate-800'} ${className}`} />
-const Input = (p) => <input {...p} className={`w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500 ${p.className || ''}`} />
-const Select = ({ children, ...p }) => <select {...p} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500">{children}</select>
-const TextArea = (p) => <textarea {...p} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
-const Field = ({ label, children, className = '' }) => <label className={`grid gap-1 text-sm text-slate-300 ${className}`}>{label}{children}</label>
-const Success = ({ message }) => (message ? <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{message}</div> : null)
-const Empty = ({ children }) => <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm text-slate-400">{children}</div>
-const Table = ({ head, children }) => <div className="overflow-x-auto rounded-xl border border-slate-800"><table className="min-w-full text-left text-sm"><thead className="bg-slate-900 text-slate-400"><tr>{head.map((h) => <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}</tr></thead><tbody className="text-slate-200">{children}</tbody></table></div>
-const Td = ({ children, className = '' }) => <td className={`border-t border-slate-800 px-4 py-3 align-top ${className}`}>{children}</td>
+// Shared design-system primitives, adapted to this module's call sites.
+const inr = (v) => inrFmt(v)
+const when = (v) => dateTime(v)
+const errText = (e, fallback) => apiError(e, fallback)
+export const Pill = ({ value }) => <StatusBadge status={value} />
+const Btn = ({ kind = 'primary', ...p }) => <Button variant={kind} {...p} />
+const Success = ({ message }) => (message ? <Alert tone="success" className="mb-4">{message}</Alert> : null)
+const Empty = ({ children }) => <EmptyState title={children} />
+const Table = ({ head, children }) => <div className="overflow-x-auto rounded-xl border border-navy-800"><table className="min-w-full text-left text-sm"><thead className="bg-navy-900 text-xs text-navy-400"><tr>{head.map((h) => <th key={h} scope="col" className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}</tr></thead><tbody className="bg-navy-950/30 text-navy-100">{children}</tbody></table></div>
+const Td = ({ children, className = '' }) => <td className={`border-t border-navy-800/80 px-4 py-3 align-top ${className}`}>{children}</td>
 
 function useLoad(path, deps = []) {
   const [data, setData] = useState(null)
@@ -74,14 +58,15 @@ export function SettlementsPage({ staff = false }) {
   const { data, error, loading, reload, setError } = useLoad(staff ? '/settlements' : '/settlements/me')
   const [busy, setBusy] = useState('')
   const [ok, setOk] = useState('')
+  const { prompt } = useDialog()
   const act = async (s, action) => {
     let body
     if (action === 'mark-failed') {
-      const reason = window.prompt(`Why did the payout for ${s.settlement_number} fail?`)
+      const reason = await prompt({ title: `Mark ${s.settlement_number} as failed`, description: 'The payout ledger entry will be reversed and the customer notified.', label: 'What went wrong?', minLength: 5, multiline: true, confirmLabel: 'Mark failed', danger: true })
       if (!reason) return
       body = { reason }
     } else {
-      const ref = window.prompt(`New bank/UTR reference for re-sent payout of ${inr(s.net_amount)}:`)
+      const ref = await prompt({ title: `Retry payout of ${inr(s.net_amount)}`, description: 'A new payout entry is posted to the ledger.', label: 'Bank / UTR reference of the new transfer', minLength: 4, confirmLabel: 'Record payout' })
       if (!ref) return
       body = { payout_reference: ref }
     }
@@ -97,7 +82,7 @@ export function SettlementsPage({ staff = false }) {
         {rows.map((s) => <tr key={s.id}>
           <Td>{s.settlement_number}<div className="text-xs text-slate-500">{when(s.paid_at)}</div></Td><Td>{s.claim_number}</Td><Td>{inr(s.approved_amount)}</Td><Td>{inr(s.deductible_amount)}</Td><Td className="font-semibold">{inr(s.net_amount)}</Td>
           <Td><Pill value={s.status} />{s.failure_reason && <div className="mt-1 max-w-[14rem] text-xs text-rose-300">{s.failure_reason}</div>}</Td>
-          <Td className="font-mono text-xs">{s.payout_reference || '—'}</Td><Td>{s.reconciled ? '✓' : '—'}</Td>
+          <Td className="font-mono text-xs">{s.payout_reference || '—'}</Td><Td>{s.reconciled ? <span className="text-emerald-300">Reconciled</span> : '—'}</Td>
           {staff && <Td className="whitespace-nowrap">{s.status === 'paid' ? <Btn kind="danger" disabled={busy === s.id} onClick={() => act(s, 'mark-failed')}>Mark failed</Btn> : <Btn disabled={busy === s.id} onClick={() => act(s, 'retry')}>Retry payout</Btn>}</Td>}
         </tr>)}
       </Table>}
@@ -154,7 +139,7 @@ export function GrievancesPage({ staff = false }) {
           <p className="whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-sm text-slate-200">{current.description}</p>
           {current.resolution && <div className="rounded-lg border border-emerald-600/30 bg-emerald-900/10 p-3 text-sm text-emerald-200"><b>Resolution:</b> {current.resolution}</div>}
           <div className="space-y-2">{current.comments.map((c) => <div key={c.id} className={`rounded-lg p-3 text-sm ${c.is_internal ? 'border border-amber-600/30 bg-amber-900/10' : 'bg-slate-800/60'}`}><div className="mb-1 text-xs text-slate-400">{c.author_name || 'User'} · {when(c.created_at)}{c.is_internal && ' · internal note'}</div><div className="whitespace-pre-wrap text-slate-100">{c.message}</div></div>)}</div>
-          {!!current.attachments.length && <div className="flex flex-wrap gap-2">{current.attachments.map((a) => <button key={a.id} onClick={() => download(a)} className="rounded border border-slate-700 px-2 py-1 text-xs text-cyan-300 hover:bg-slate-800">📎 {a.original_filename}</button>)}</div>}
+          {!!current.attachments.length && <div className="flex flex-wrap gap-2">{current.attachments.map((a) => <button key={a.id} onClick={() => download(a)} className="rounded border border-slate-700 px-2 py-1 text-xs text-cyan-300 hover:bg-slate-800"><PaperClipIcon className="mr-1 inline h-3.5 w-3.5" aria-hidden />{a.original_filename}</button>)}</div>}
           {current.status !== 'closed' && <form onSubmit={send} className="space-y-2">
             <TextArea rows={3} placeholder="Write a reply…" value={reply} onChange={(e) => setReply(e.target.value)} />
             <div className="flex flex-wrap items-center gap-3"><Btn disabled={saving || !reply.trim()}>Send reply</Btn>
@@ -227,11 +212,12 @@ export function RolesPermissionsPage() {
   const dirty = (r) => { const a = draft[r.id]; return a && (a.size !== r.permissions.length || r.permissions.some((c) => !a.has(c))) }
   const toggle = (role, code) => { if (role.role_name === 'admin') return; setDraft((d) => { const s = new Set(d[role.id]); s.has(code) ? s.delete(code) : s.add(code); return { ...d, [role.id]: s } }) }
   const run = async (key, fn, msg) => { setSaving(key); setError(''); setOk(''); try { await fn(); setOk(msg); reload() } catch (e) { setError(errText(e, 'Request failed.')) } finally { setSaving('') } }
+  const { confirm } = useDialog()
   const save = (r) => run(r.id, () => api.put(`/admin/roles/${r.id}/permissions`, { permission_codes: [...draft[r.id]] }), `Saved permissions for ${r.role_name}.`)
   const createRole = (e) => { e.preventDefault(); run('newrole', () => api.post('/admin/roles', { ...newRole, permission_codes: [] }), `Role ${newRole.role_name} created.`).then(() => setNewRole({ role_name: '', description: '' })) }
   const createPerm = (e) => { e.preventDefault(); run('newperm', () => api.post('/admin/permissions', newPerm), `Permission ${newPerm.code} created.`).then(() => setNewPerm({ code: '', name: '', category: 'general' })) }
-  const deleteRole = (r) => { if (window.confirm(`Delete role ${r.role_name}?`)) run(r.id, () => api.delete(`/admin/roles/${r.id}`), `Role ${r.role_name} deleted.`) }
-  const deletePerm = (p) => { if (window.confirm(`Delete permission ${p.code}?`)) run(p.id, () => api.delete(`/admin/permissions/${p.id}`), `Permission ${p.code} deleted.`) }
+  const deleteRole = async (r) => { if (await confirm({ title: `Delete role ${r.role_name}?`, message: 'The role and its permission grants are removed. This cannot be undone.', confirmLabel: 'Delete role', danger: true })) run(r.id, () => api.delete(`/admin/roles/${r.id}`), `Role ${r.role_name} deleted.`) }
+  const deletePerm = async (p) => { if (await confirm({ title: `Delete permission ${p.code}?`, message: 'It is removed from every role that holds it.', confirmLabel: 'Delete permission', danger: true })) run(p.id, () => api.delete(`/admin/permissions/${p.id}`), `Permission ${p.code} deleted.`) }
 
   return <Shell title="Roles & Permissions" role="admin">
     <p className="mb-5 text-sm text-slate-400">Tick a box to grant a permission to a role, then save that role's column. Changes apply on the user's next request. The administrator role always holds every permission.</p>
@@ -288,8 +274,9 @@ export function AdminProductsPage() {
       setForm(null); setEditing(null); reload()
     } catch (err) { setError(errText(err, 'Save failed.')) } finally { setSaving(false) }
   }
+  const { confirm } = useDialog()
   const toggle = async (p) => { setError(''); setOk(''); try { await api.post(`/admin/insurance-products/${p.id}/${p.status === 'active' ? 'deactivate' : 'activate'}`); setOk(`${p.product_code} ${p.status === 'active' ? 'deactivated' : 'activated'}.`); reload() } catch (err) { setError(errText(err, 'Status change failed.')) } }
-  const retire = async (p) => { if (!window.confirm(`Retire ${p.product_code}? Only possible if nobody has applied for it.`)) return; try { await api.delete(`/admin/insurance-products/${p.id}`); setOk(`${p.product_code} retired.`); reload() } catch (err) { setError(errText(err, 'Retire failed.')) } }
+  const retire = async (p) => { if (!(await confirm({ title: `Retire ${p.product_code}?`, message: 'Retiring removes the product from the catalogue. It is only allowed when nobody has applied for it; otherwise deactivate it.', confirmLabel: 'Retire product', danger: true }))) return; try { await api.delete(`/admin/insurance-products/${p.id}`); setOk(`${p.product_code} retired.`); reload() } catch (err) { setError(errText(err, 'Retire failed.')) } }
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   return <Shell title="Insurance Product Catalog" role="admin">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-400">Create, edit, activate and deactivate products. Deactivated products stop being quoted; existing policies are unaffected.</p>{!form && <Btn onClick={() => { setEditing(null); setForm(blankProduct) }}>+ New product</Btn>}</div>
@@ -337,7 +324,8 @@ export function FinancePage() {
   const run = async (fn, msg) => { setError(''); setOk(''); try { const r = await fn(); setOk(msg); refreshAll(); return r } catch (e) { setError(errText(e, 'Request failed.')) } }
   const doVerify = async () => { try { setVerify((await api.get('/finance/ledger/verify')).data) } catch (e) { setError(errText(e, 'Verification failed.')) } }
   const postAdj = (e) => { e.preventDefault(); run(() => api.post('/finance/ledger/adjustments', { ...adj, external_reference: adj.external_reference || null }), 'Adjustment posted.').then(() => setAdj({ ...adj, amount: '', description: '', external_reference: '' })) }
-  const reverse = (entry) => { const reason = window.prompt(`Reason for reversing ${entry.entry_number}?`); if (reason) run(() => api.post(`/finance/ledger/${entry.id}/reverse`, { reason }), `${entry.entry_number} reversed.`) }
+  const { prompt } = useDialog()
+  const reverse = async (entry) => { const reason = await prompt({ title: `Reverse ${entry.entry_number}`, description: `A reversal entry for ${inr(entry.amount)} is posted; the original stays in the ledger.`, label: 'Reason', minLength: 5, confirmLabel: 'Post reversal', danger: true }); if (reason) run(() => api.post(`/finance/ledger/${entry.id}/reverse`, { reason }), `${entry.entry_number} reversed.`) }
   const reconcile = async (e) => {
     e.preventDefault()
     const lines = rec.csv.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const [reference, amount] = l.split(/[,\t;]/).map((x) => x.trim()); return { reference, amount } })
@@ -358,7 +346,7 @@ export function FinancePage() {
     {s && <p className="mb-5 text-sm text-slate-400">Loss ratio: <b className="text-slate-200">{s.loss_ratio_percent === null ? 'n/a' : `${s.loss_ratio_percent}%`}</b> · Net cash movement: <b className="text-slate-200">{inr(s.net_cash_movement)}</b></p>}
 
     <Card title="Ledger" className="mb-5" actions={<><Btn kind="ghost" onClick={doVerify}>Verify integrity</Btn><Btn kind="ghost" onClick={refreshAll}>Refresh</Btn></>}>
-      {verify && <div className={`mb-4 rounded-lg border p-3 text-sm ${verify.valid ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>{verify.valid ? `✓ Hash chain intact across ${verify.entries_checked} entries.` : `✗ Integrity failure at entry #${verify.first_invalid_sequence}: ${verify.reason}`}</div>}
+      {verify && <div className={`mb-4 rounded-lg border p-3 text-sm ${verify.valid ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>{verify.valid ? `Hash chain intact across ${verify.entries_checked} entries.` : `Integrity failure at entry #${verify.first_invalid_sequence}: ${verify.reason}`}</div>}
       {!(ledger.data || []).length ? <p className="text-sm text-slate-400">No ledger entries in this period.</p> : <Table head={['#', 'Posted', 'Type', 'Debit', 'Credit', 'Amount', 'Reference', 'Description', '']}>
         {ledger.data.map((e) => <tr key={e.id}><Td className="font-mono text-xs">{e.entry_number}</Td><Td className="whitespace-nowrap text-xs">{when(e.posted_at)}</Td><Td><Pill value={e.entry_type} /></Td><Td>{e.debit_account}</Td><Td>{e.credit_account}</Td><Td className="whitespace-nowrap font-semibold">{inr(e.amount)}</Td><Td className="font-mono text-xs">{e.external_reference || '—'}</Td><Td className="max-w-xs text-xs">{e.description}</Td>
           <Td>{e.entry_type !== 'reversal' && !reversed.has(e.id) && e.reference_type !== 'settlement' && <button onClick={() => reverse(e)} className="text-xs text-rose-400 hover:underline">Reverse</button>}{reversed.has(e.id) && <span className="text-xs text-slate-500">reversed</span>}</Td></tr>)}
@@ -408,8 +396,16 @@ export function InspectionsPage({ staff = false }) {
   const run = async (fn, msg) => { setBusy(true); setError(''); setOk(''); try { await fn(); setOk(msg); reload() } catch (e) { setError(errText(e, 'Request failed.')) } finally { setBusy(false) } }
   const window_ = (startLocal, hours) => { const s = new Date(startLocal); return { scheduled_start: s.toISOString(), scheduled_end: new Date(s.getTime() + Number(hours) * 3600000).toISOString() } }
   const schedule = (e) => { e.preventDefault(); run(() => api.post('/inspections', { claim_id: form.claim_id, location: form.location, notes: form.notes || null, ...window_(form.start, form.hours) }), 'Inspection scheduled. The customer has been notified.') }
-  const reschedule = (a) => { const when_ = window.prompt('New start (YYYY-MM-DD HH:MM, your local time):', toLocalInput(new Date(`${a.scheduled_start}Z`)).replace('T', ' ')); if (!when_) return; const reason = window.prompt('Reason for rescheduling:'); if (!reason) return; const hrs = (new Date(`${a.scheduled_end}Z`) - new Date(`${a.scheduled_start}Z`)) / 3600000; run(() => api.post(`/inspections/${a.id}/reschedule`, { reason, ...window_(when_.replace(' ', 'T'), hrs) }), 'Inspection rescheduled.') }
-  const cancel = (a) => { const reason = window.prompt('Reason for cancelling:'); if (reason) run(() => api.post(`/inspections/${a.id}/cancel`, { reason }), 'Inspection cancelled.') }
+  const { prompt } = useDialog()
+  const reschedule = async (a) => {
+    const startLocal = await prompt({ title: `Reschedule ${a.appointment_number}`, label: 'New start (your local time)', inputType: 'datetime-local', defaultValue: toLocalInput(new Date(`${a.scheduled_start}Z`)), confirmLabel: 'Next' })
+    if (!startLocal) return
+    const reason = await prompt({ title: 'Reason for rescheduling', label: 'The surveyor and customer will see this.', minLength: 5, multiline: true, confirmLabel: 'Reschedule' })
+    if (!reason) return
+    const hrs = (new Date(`${a.scheduled_end}Z`) - new Date(`${a.scheduled_start}Z`)) / 3600000
+    run(() => api.post(`/inspections/${a.id}/reschedule`, { reason, ...window_(startLocal, hrs) }), 'Inspection rescheduled.')
+  }
+  const cancel = async (a) => { const reason = await prompt({ title: `Cancel ${a.appointment_number}?`, label: 'Reason for cancelling', minLength: 5, multiline: true, confirmLabel: 'Cancel inspection', danger: true }); if (reason) run(() => api.post(`/inspections/${a.id}/cancel`, { reason }), 'Inspection cancelled.') }
   const complete = (a) => run(() => api.post(`/inspections/${a.id}/complete`), 'Marked as completed. Remember to submit the survey report.')
   const rows = data || []
   const groups = rows.reduce((acc, a) => { const k = new Date(`${a.scheduled_start}Z`).toDateString(); (acc[k] ||= []).push(a); return acc }, {})
